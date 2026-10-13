@@ -34,10 +34,81 @@ function getGeminiClient() {
 let variablesStore: EconomicVariable[] = [...ARGENTINA_ECONOMIC_VARIABLES];
 let lastSyncTimestamp = new Date().toISOString();
 
+/**
+ * Relevamiento en tiempo real de tipos de cambio de Argentina mediante API pública
+ */
+async function syncExternalDollarRates() {
+  try {
+    const res = await fetch("https://dolarapi.com/v1/dolares");
+    if (res.ok) {
+      const data = (await res.json()) as Array<{
+        moneda: string;
+        casa: string;
+        nombre: string;
+        compra: number;
+        venta: number;
+        fechaActualizacion: string;
+      }>;
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item.casa === "oficial") {
+            const v = variablesStore.find(x => x.id === "bna_dolar_billete");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Cotización oficial de venta del dólar minorista en ventanilla publicada por BNA. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          } else if (item.casa === "blue") {
+            const v = variablesStore.find(x => x.id === "dolar_blue");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Cotización informal del dólar billete en el mercado libre de cambios. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          } else if (item.casa === "bolsa") {
+            const v = variablesStore.find(x => x.id === "dolar_mep_byma");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Tipo de cambio implícito en la liquidación de bonos soberanos (AL30/GD30) en BYMA. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          } else if (item.casa === "contadoconliqui") {
+            const v = variablesStore.find(x => x.id === "dolar_ccl_byma");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Cotización implícita para transferencias al exterior mediante bonos o CEDEARs registrada en BYMA. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          } else if (item.casa === "mayorista") {
+            const v = variablesStore.find(x => x.id === "bna_dolar_divisa");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Cotización oficial del dólar modalidad divisa o comercio exterior (BCRA Com. A 3500). Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          } else if (item.casa === "tarjeta") {
+            const v = variablesStore.find(x => x.id === "dolar_tarjeta");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior, incluyendo percepciones tributarias. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          } else if (item.casa === "cripto") {
+            const v = variablesStore.find(x => x.id === "dolar_cripto");
+            if (v && item.venta) {
+              v.value = item.venta;
+              v.description = `Cotización en tiempo real de paridad ARS/USDT en plataformas de activos virtuales. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
+            }
+          }
+        }
+        console.log("[Auto-Sync] Cotizaciones del dólar actualizadas en tiempo real con DolarApi");
+      }
+    }
+  } catch (err) {
+    console.warn("[Auto-Sync] No se pudo obtener cotizaciones online de DolarApi, utilizando valores calibrados de contingencia:", err);
+  }
+}
+
 function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
   const result = syncVariablesToCurrentDate(variablesStore);
   variablesStore = result.updatedVariables;
   lastSyncTimestamp = new Date().toISOString();
+  // Disparar sincronización de cotizaciones en tiempo real
+  syncExternalDollarRates().catch(() => {});
   if (result.updatedCount > 0) {
     console.log(`[Auto-Sync] ${result.updatedCount} variables actualizadas automáticamente al día ${result.syncDate}`);
   }
@@ -46,15 +117,19 @@ function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
 
 // Initial sync at module load
 runDailyAutoSync();
+syncExternalDollarRates().catch(() => {});
 
-// Hourly automated cron-style check
+// Revisión automática periódica cada 5 minutos (300.000 ms) en segundo plano
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
 setInterval(() => {
   try {
-    runDailyAutoSync();
+    const res = runDailyAutoSync();
+    syncExternalDollarRates().catch(() => {});
+    console.log(`[Auto-Sync 5min] Revisión automática ejecutada (${new Date().toLocaleTimeString()}): ${res.updatedCount} actualizadas.`);
   } catch (err) {
-    console.error("[Auto-Sync] Error en actualización periódica:", err);
+    console.error("[Auto-Sync 5min] Error en revisión periódica:", err);
   }
-}, 30 * 60 * 1000);
+}, FIVE_MINUTES_MS);
 
 async function startServer() {
   const app = express();
@@ -70,23 +145,28 @@ async function startServer() {
     const today = new Date().toISOString().split("T")[0];
     res.json({
       autoUpdate: true,
+      intervalMinutes: 5,
+      intervalMs: FIVE_MINUTES_MS,
       lastSyncDate: today,
       lastSyncTime: lastSyncTimestamp,
       status: "up_to_date",
       totalVariables: variablesStore.length,
-      frequency: "diaria",
+      frequency: "cada 5 minutos",
       sources: ["BNA", "BCRA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
     });
   });
 
   // API 1c: Trigger manual/forced auto-sync
-  app.post("/api/sync/trigger", (req, res) => {
+  app.post("/api/sync/trigger", async (req, res) => {
+    await syncExternalDollarRates();
     const result = runDailyAutoSync();
     res.json({
       success: true,
-      message: "Actualización diaria ejecutada correctamente",
+      message: "Revisión de datos ejecutada con fuentes oficiales y mercados en tiempo real",
       syncDate: result.syncDate,
+      lastSyncTime: lastSyncTimestamp,
       updatedCount: result.updatedCount,
+      intervalMinutes: 5,
       variables: variablesStore
     });
   });

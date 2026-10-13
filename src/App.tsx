@@ -47,6 +47,7 @@ import {
 } from './brazilData';
 import { computeBankRates, computeBrazilBankRates } from './fixedTermData';
 import { ArgentinaFlag, BrazilFlag } from './components/FlagIcons';
+import { TopicTechVisualizer } from './components/TopicTechVisualizer';
 
 type Tab = 'temas' | 'cotizaciones' | 'plazo_fijo' | 'tendencias' | 'fuentes' | 'asesor';
 
@@ -67,12 +68,12 @@ function EconoLogo({
       <div
         onClick={onClick}
         className="flex items-center gap-2.5 cursor-pointer group"
-        title="Econoapp - Ir a Temas de Interés"
+        title="Econoapp"
       >
         <div className="relative flex items-center justify-center shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-[1px] shadow-xs group-hover:scale-105 transition-transform duration-200">
-            <div className="w-full h-full rounded-[11px] bg-slate-950 flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/25 via-indigo-500/10 to-teal-400/20 pointer-events-none" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2a170f] via-[#3a1d12] to-[#1e0e07] p-[1px] shadow-xs group-hover:scale-105 transition-transform duration-200">
+            <div className="w-full h-full rounded-[11px] bg-[#1e0e07] flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/30 via-orange-500/20 to-rose-400/25 pointer-events-none" />
               <svg
                 className="w-5 h-5 relative z-10"
                 viewBox="0 0 24 24"
@@ -84,19 +85,19 @@ function EconoLogo({
                   d="M4 6C4 4.89543 4.89543 4 6 4H18C19.1046 4 20 4.89543 20 6V7C20 7.55228 19.5523 8 19 8H8.5C7.67157 8 7 8.67157 7 9.5V11H16C16.5523 11 17 11.4477 17 12V12.5C17 13.0523 16.5523 13.5 16 13.5H7V15C7 15.8284 7.67157 16.5 8.5 16.5H19C19.5523 16.5 20 16.9477 20 17.5V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6Z"
                   fill="url(#econo-grad-main)"
                 />
-                {/* Ascending financial vector and pulse dot */}
+                {/* Ascending financial vector in sober electric blue */}
                 <path
                   d="M13 3L20 3M20 3L20 10M20 3L11 12"
-                  stroke="#10b981"
+                  stroke="#2563eb"
                   strokeWidth="2.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
-                <circle cx="20" cy="3" r="1.5" fill="#34d399" />
+                <circle cx="20" cy="3" r="1.5" fill="#38bdf8" />
                 <defs>
                   <linearGradient id="econo-grad-main" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#f8fafc" />
-                    <stop offset="1" stopColor="#cbd5e1" />
+                    <stop stopColor="#dbeafe" />
+                    <stop offset="1" stopColor="#bfdbfe" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -105,11 +106,11 @@ function EconoLogo({
         </div>
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5 leading-none">
-            <span className="text-[17px] font-black tracking-tight text-slate-950 font-sans">
-              Econo<span className="text-emerald-600 font-extrabold">app</span>
+            <span className="text-[17px] font-black tracking-tight text-slate-900 font-sans">
+              Econo<span className="text-blue-600 font-extrabold">app</span>
             </span>
-            {/* Country flag displayed on the right instead of text 'ARG' */}
-            <span className="inline-flex items-center ml-0.5" title={country === 'AR' ? 'Mercado Argentino' : 'Mercado Brasileiro'}>
+            {/* Country flag displayed on the right */}
+            <span className="inline-flex items-center ml-0.5">
               {country === 'AR' ? (
                 <ArgentinaFlag className="w-5 h-3.5 shadow-2xs" />
               ) : (
@@ -117,14 +118,14 @@ function EconoLogo({
               )}
             </span>
           </div>
-          <span className="text-[10px] font-medium text-slate-400 tracking-tight mt-0.5 whitespace-nowrap">
-            {country === 'BR' ? 'Variáveis Oficiais & Câmaras (Brasil)' : 'Variables Oficiales & Cámaras (Argentina)'}
+          <span className="text-[10px] font-medium text-blue-900/60 tracking-tight mt-0.5 whitespace-nowrap">
+            {country === 'BR' ? 'Dados Oficiais' : 'Datos Oficiales'}
           </span>
         </div>
       </div>
 
-      {/* Flag Country Selector: Argentina 🇦🇷 and Brasil 🇧🇷 */}
-      <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shadow-2xs">
+      {/* Flag Country Selector */}
+      <div className="flex items-center bg-blue-100/60 p-0.5 rounded-lg border border-blue-200/80 shadow-2xs">
         <button
           type="button"
           onClick={(e) => {
@@ -133,10 +134,10 @@ function EconoLogo({
           }}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-xs ${
             country === 'AR'
-              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-slate-200'
-              : 'text-slate-500 hover:text-slate-800 opacity-60 hover:opacity-100'
+              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-blue-300'
+              : 'text-slate-500 hover:text-slate-800 opacity-70 hover:opacity-100'
           }`}
-          title="Versión Mercado Argentino (BCRA, BNA, INDEC)"
+          title="Argentina"
         >
           <ArgentinaFlag className="w-4.5 h-3" />
           <span className="hidden sm:inline text-[10px] font-bold">ARG</span>
@@ -149,10 +150,10 @@ function EconoLogo({
           }}
           className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-xs ${
             country === 'BR'
-              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-emerald-500/30'
-              : 'text-slate-500 hover:text-slate-800 opacity-60 hover:opacity-100'
+              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-blue-300'
+              : 'text-slate-500 hover:text-slate-800 opacity-70 hover:opacity-100'
           }`}
-          title="Versão Mercado Brasileiro (BCB, IBGE, B3, FGV)"
+          title="Brasil"
         >
           <BrazilFlag className="w-4.5 h-3" />
           <span className="hidden sm:inline text-[10px] font-bold">BRA</span>
@@ -218,6 +219,52 @@ function MiniSparkline({
       </svg>
     </div>
   );
+}
+
+function getTopicWarmBadge(topicId: TopicId) {
+  switch (topicId) {
+    case 'cambiario_divisas':
+      return {
+        badge: 'bg-blue-100/90 text-blue-900 border-blue-300',
+        activePill: 'bg-blue-600 text-white font-semibold shadow-xs ring-1 ring-blue-500',
+        cardBorder: 'border-blue-400 ring-2 ring-blue-400/40 shadow-lg',
+        accentHex: '#2563eb',
+        name: 'Cobalto'
+      };
+    case 'precios_inflacion':
+      return {
+        badge: 'bg-indigo-100/90 text-indigo-950 border-indigo-300',
+        activePill: 'bg-indigo-600 text-white font-semibold shadow-xs ring-1 ring-indigo-500',
+        cardBorder: 'border-indigo-400 ring-2 ring-indigo-400/40 shadow-lg',
+        accentHex: '#4f46e5',
+        name: 'Índigo'
+      };
+    case 'tasas_ahorro':
+      return {
+        badge: 'bg-sky-100/90 text-sky-950 border-sky-300',
+        activePill: 'bg-sky-600 text-white font-semibold shadow-xs ring-1 ring-sky-500',
+        cardBorder: 'border-sky-400 ring-2 ring-sky-400/40 shadow-lg',
+        accentHex: '#0284c7',
+        name: 'Glaciar'
+      };
+    case 'actividad_industria':
+      return {
+        badge: 'bg-slate-200/90 text-slate-900 border-slate-300',
+        activePill: 'bg-slate-700 text-white font-semibold shadow-xs ring-1 ring-slate-600',
+        cardBorder: 'border-slate-400 ring-2 ring-slate-400/40 shadow-lg',
+        accentHex: '#475569',
+        name: 'Acero'
+      };
+    case 'credito_salarios':
+    default:
+      return {
+        badge: 'bg-blue-100/90 text-blue-950 border-blue-300',
+        activePill: 'bg-blue-800 text-white font-semibold shadow-xs ring-1 ring-blue-700',
+        cardBorder: 'border-blue-600 ring-2 ring-blue-600/40 shadow-lg',
+        accentHex: '#1d4ed8',
+        name: 'Ultramar'
+      };
+  }
 }
 
 export default function App() {
@@ -318,8 +365,18 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-  // Auto-Update Engine State
+  // Auto-Update Engine State (Revisión automática cada 5 minutos)
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [autoSyncCountdown, setAutoSyncCountdown] = useState<number>(300); // 300 segundos = 5 minutos
+  const [lastVerifiedTime, setLastVerifiedTime] = useState<string>(() =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   // Toast
   const [toast, setToast] = useState<string | null>(null);
@@ -361,13 +418,13 @@ export default function App() {
     }
   };
 
-  // Initial load
+  // Initial load and periodic refresh
   const loadData = async (silent = false) => {
     try {
       if (!silent) setIsSyncing(true);
       const [varsRes, banksRes] = await Promise.all([
-        fetch('/api/variables'),
-        fetch('/api/plazos-fijos')
+        fetch(`/api/variables?country=${selectedCountry}`),
+        fetch(`/api/plazos-fijos?country=${selectedCountry}`)
       ]);
 
       if (varsRes.ok) {
@@ -380,6 +437,7 @@ export default function App() {
         const banksData = await banksRes.json();
         if (banksData.rates) setBankRates(banksData.rates);
       }
+      setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
       console.error('Error loading data', err);
     } finally {
@@ -393,24 +451,41 @@ export default function App() {
       const res = await fetch('/api/sync/trigger', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        if (data.variables) setVariables(data.variables);
-        setBankRates(computeBankRates('2026-10-13'));
-        triggerToast('Datos sincronizados exactamente al 13-10-2026');
+        if (data.variables && selectedCountry === 'AR') setVariables(data.variables);
+        if (selectedCountry === 'BR') {
+          setBankRates(computeBrazilBankRates('2026-10-13'));
+        } else {
+          setBankRates(computeBankRates('2026-10-13'));
+        }
+        setAutoSyncCountdown(300);
+        setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        triggerToast('Revisión completada: datos al día con fuentes oficiales');
       }
     } catch {
-      loadData(true);
+      await loadData(true);
+      setAutoSyncCountdown(300);
+      setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setIsSyncing(false);
     }
   };
 
+  // Revisión automática de la plataforma cada 5 minutos (300s)
   useEffect(() => {
     loadData();
     const interval = setInterval(() => {
-      loadData(true);
-    }, 60000);
+      setAutoSyncCountdown(prev => {
+        if (prev <= 1) {
+          loadData(true);
+          setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          return 300;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedCountry]);
 
   useEffect(() => {
     if (activeTab === 'asesor') {
@@ -652,18 +727,18 @@ export default function App() {
   }, [topics, selectedTopicFilter, userInterestTopicIds]);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-slate-900 selection:bg-slate-900 selection:text-white pb-24 md:pb-16 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-[#edf3fa] via-[#f1f6fc] to-[#e8f0fa] text-slate-900 selection:bg-blue-900 selection:text-white pb-24 md:pb-16 font-sans">
       
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border border-slate-800 animate-in fade-in duration-200">
-          <Check className="size-3.5 text-emerald-400" />
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#0a192f] text-blue-100 text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border border-blue-800/40 animate-in fade-in duration-200">
+          <Check className="size-3.5 text-blue-400" />
           <span>{toast}</span>
         </div>
       )}
 
       {/* Top Bar with Modern Econoapp Logo */}
-      <header className="sticky top-0 z-30 bg-[#fafafa]/90 backdrop-blur-md border-b border-slate-200/60">
+      <header className="sticky top-0 z-30 bg-[#edf3fa]/90 backdrop-blur-md border-b border-blue-900/10">
         <div className="max-w-5xl mx-auto px-4 h-15 flex items-center justify-between gap-6">
           
           {/* Zone 1: Modern Econoapp Logo with Country Flag and Switcher */}
@@ -674,74 +749,78 @@ export default function App() {
           />
 
           {/* Zone 2: Navigation Links (Clean single-line text) */}
-          <nav className="hidden md:flex items-center gap-5 text-xs font-medium text-slate-600">
+          <nav className="hidden md:flex items-center gap-4 text-xs font-medium text-slate-600">
             <button
               onClick={() => setActiveTab('temas')}
               className={`flex items-center gap-1.5 transition-colors whitespace-nowrap px-2.5 py-1 rounded-lg ${
                 activeTab === 'temas'
-                  ? 'bg-slate-900 text-white font-semibold shadow-2xs'
-                  : 'hover:text-slate-950 hover:bg-slate-100'
+                  ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30'
+                  : 'hover:text-slate-950 hover:bg-blue-100/50'
               }`}
             >
               <Layers className="size-3.5" />
-              <span>{selectedCountry === 'BR' ? 'Temas de Interesse' : 'Temas de Interés'}</span>
+              <span>Temas</span>
             </button>
             <button
               onClick={() => setActiveTab('cotizaciones')}
-              className={`transition-colors whitespace-nowrap ${
-                activeTab === 'cotizaciones' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
+              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
+                activeTab === 'cotizaciones' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
               }`}
             >
-              {selectedCountry === 'BR' ? 'Cotações BCB' : 'Cotizaciones BNA'}
+              {selectedCountry === 'BR' ? 'Cotações' : 'Cotizaciones'}
             </button>
             <button
               onClick={() => setActiveTab('plazo_fijo')}
-              className={`transition-colors whitespace-nowrap ${
-                activeTab === 'plazo_fijo' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
+              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
+                activeTab === 'plazo_fijo' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
               }`}
             >
-              {selectedCountry === 'BR' ? 'Renda Fixa CDB' : 'Plazo Fijo'}
+              {selectedCountry === 'BR' ? 'CDB' : 'Plazo Fijo'}
             </button>
             <button
               onClick={() => setActiveTab('tendencias')}
-              className={`transition-colors whitespace-nowrap ${
-                activeTab === 'tendencias' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
+              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
+                activeTab === 'tendencias' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
               }`}
             >
               {selectedCountry === 'BR' ? 'Tendências' : 'Tendencias'}
             </button>
             <button
               onClick={() => setActiveTab('fuentes')}
-              className={`transition-colors whitespace-nowrap ${
-                activeTab === 'fuentes' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
+              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
+                activeTab === 'fuentes' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
               }`}
             >
-              {selectedCountry === 'BR' ? 'Fontes & Câmaras' : 'Fuentes & Cámaras'}
+              {selectedCountry === 'BR' ? 'Fontes' : 'Fuentes'}
             </button>
             <button
               onClick={() => setActiveTab('asesor')}
-              className={`transition-colors whitespace-nowrap ${
-                activeTab === 'asesor' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
+              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
+                activeTab === 'asesor' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
               }`}
             >
-              {selectedCountry === 'BR' ? 'Consultor IA' : 'Asesor IA'}
+              {selectedCountry === 'BR' ? 'Consultor' : 'Asesor'}
             </button>
           </nav>
 
-          {/* Zone 3: Date & Manual Sync */}
+          {/* Zone 3: Date, Auto-Review (5m) & Manual Sync */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-600 font-mono px-2 py-1 bg-slate-100 rounded-md border border-slate-200/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              13-10-2026
+            <span
+              className="inline-flex items-center gap-1.5 text-xs text-blue-950 font-mono px-2 py-1 bg-blue-100/80 rounded-md border border-blue-200/90"
+              title={`Revisión automática cada 5 minutos. Próxima en ${formatCountdown(autoSyncCountdown)} (última: ${lastVerifiedTime})`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span className="hidden sm:inline">Auto-revisión 5m</span>
+              <span className="font-semibold tabular-nums text-blue-900">{formatCountdown(autoSyncCountdown)}</span>
             </span>
             <button
               onClick={handleManualSync}
               disabled={isSyncing}
-              className="h-8.5 px-3 text-xs font-medium text-slate-800 bg-white hover:bg-slate-100 border border-slate-200/80 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 disabled:opacity-60 shadow-2xs"
-              title="Actualizar datos oficiales"
+              className="h-8.5 px-3 text-xs font-medium text-slate-800 bg-white hover:bg-blue-50 border border-blue-200/80 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 disabled:opacity-60 shadow-xs"
+              title="Revisar ahora con fuentes oficiales"
             >
-              <RefreshCw className={`size-3 text-slate-500 ${isSyncing ? 'animate-spin text-slate-900' : ''}`} />
-              <span className="hidden xs:inline">{isSyncing ? 'Sincronizando' : 'Actualizar'}</span>
+              <RefreshCw className={`size-3 text-slate-500 ${isSyncing ? 'animate-spin text-blue-700' : ''}`} />
+              <span className="hidden xs:inline">{isSyncing ? 'Revisando' : 'Revisar'}</span>
             </button>
           </div>
         </div>
@@ -751,51 +830,51 @@ export default function App() {
       <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
 
         {/* Mobile Tab Switcher */}
-        <div className="md:hidden flex p-1 bg-slate-200/60 rounded-xl gap-1 text-xs font-medium overflow-x-auto scrollbar-none">
+        <div className="md:hidden flex p-1 bg-blue-100/70 rounded-xl gap-1 text-xs font-medium overflow-x-auto scrollbar-none border border-blue-200/60">
           <button
             onClick={() => setActiveTab('temas')}
-            className={`flex-1 min-w-[95px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'temas' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
+            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
+              activeTab === 'temas' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
             }`}
           >
             Temas
           </button>
           <button
             onClick={() => setActiveTab('cotizaciones')}
-            className={`flex-1 min-w-[95px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'cotizaciones' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
+            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
+              activeTab === 'cotizaciones' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
             }`}
           >
-            Cotizaciones
+            {selectedCountry === 'BR' ? 'Cotações' : 'Cotizaciones'}
           </button>
           <button
             onClick={() => setActiveTab('plazo_fijo')}
-            className={`flex-1 min-w-[95px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'plazo_fijo' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
+            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
+              activeTab === 'plazo_fijo' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
             }`}
           >
-            Plazos Fijos
+            {selectedCountry === 'BR' ? 'CDB' : 'Plazos'}
           </button>
           <button
             onClick={() => setActiveTab('tendencias')}
-            className={`flex-1 min-w-[95px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'tendencias' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
+            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
+              activeTab === 'tendencias' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
             }`}
           >
             Gráficos
           </button>
           <button
             onClick={() => setActiveTab('fuentes')}
-            className={`flex-1 min-w-[95px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'fuentes' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
+            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
+              activeTab === 'fuentes' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
             }`}
           >
             Fuentes
           </button>
           <button
             onClick={() => setActiveTab('asesor')}
-            className={`flex-1 min-w-[95px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'asesor' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
+            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
+              activeTab === 'asesor' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
             }`}
           >
             Asesor
@@ -809,37 +888,37 @@ export default function App() {
           <div className="space-y-6">
 
             {/* Anti-Bias & Data-Driven Header */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 font-semibold tracking-wide">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="flex items-center gap-2 text-xs font-mono text-blue-700 font-semibold tracking-wide">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
                     <span>
                       {selectedCountry === 'BR'
-                        ? 'DADO PURO E TRANSPARENTE · BRASIL · 13-10-2026'
-                        : 'DATO PURO Y TRANSPARENTE · ARGENTINA · 13-10-2026'}
+                        ? 'DADO PURO · BRASIL · 13-10-2026'
+                        : 'DATO PURO · ARGENTINA · 13-10-2026'}
                     </span>
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
-                    {selectedCountry === 'BR' ? 'Temas de Interesse Econômico' : 'Temas de Interés Económico'}
+                    {selectedCountry === 'BR' ? 'Temas Econômicos' : 'Temas Económicos'}
                   </h1>
-                  <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed">
                     {selectedCountry === 'BR'
-                      ? 'Monitoramento visual e direto de fontes primárias oficiais (BCB, IBGE, B3, FGV IBRE, Tesouro Nacional, ANFAVEA, CNC, ABRAS, DIEESE). Sem opiniões jornalísticas, sem vieses ideológicos e sem a complexidade de portais governamentais.'
-                      : 'Monitoreo visual y directo de fuentes primarias (BCRA, INDEC, BNA, BYMA, ADEFA, CAC, CAME). Sin opiniones periodísticas, sin sesgos ideológicos y sin la complejidad de los boletines oficiales.'}
+                      ? 'Dados oficiais de fontes primárias. Sem intermediários nem viés jornalístico.'
+                      : 'Datos oficiales de fuentes primarias. Sin intermediarios ni sesgo periodístico.'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                   <button
                     onClick={() => setIsCustomizingTopics(!isCustomizingTopics)}
-                    className="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
+                    className="h-8.5 px-3 bg-blue-100/70 hover:bg-blue-100 text-blue-950 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors border border-blue-200/80"
                   >
-                    <SlidersHorizontal className="size-3.5 text-slate-600" />
+                    <SlidersHorizontal className="size-3.5 text-blue-800" />
                     <span>
                       {isCustomizingTopics
-                        ? (selectedCountry === 'BR' ? 'Fechar Ajustes' : 'Cerrar Ajustes')
-                        : (selectedCountry === 'BR' ? 'Personalizar Temas' : 'Personalizar Temas')}
+                        ? (selectedCountry === 'BR' ? 'Pronto' : 'Listo')
+                        : (selectedCountry === 'BR' ? 'Ajustar' : 'Ajustar')}
                     </span>
                   </button>
                 </div>
@@ -847,22 +926,22 @@ export default function App() {
 
               {/* Customization Drawer */}
               {isCustomizingTopics && (
-                <div className="pt-4 border-t border-slate-100 space-y-3 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-900">Elegí qué temas querés fijar en tu panel:</span>
-                    <span className="text-slate-400 font-mono text-[11px]">{userInterestTopicIds.length} de {topics.length} activos</span>
+                <div className="pt-3 border-t border-blue-100 space-y-2.5 animate-in fade-in duration-200">
+                  <div className="text-xs font-semibold text-slate-900">
+                    {selectedCountry === 'BR' ? 'Temas em exibição:' : 'Temas en pantalla:'}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                     {topics.map(topic => {
                       const isChecked = userInterestTopicIds.includes(topic.id);
+                      const warm = getTopicWarmBadge(topic.id);
                       return (
                         <div
                           key={topic.id}
                           onClick={() => toggleTopicInterest(topic.id)}
-                          className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between gap-2 transition-all ${
+                          className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between gap-2 transition-all ${
                             isChecked
-                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              ? `${warm.activePill}`
+                              : 'bg-blue-50/50 text-slate-600 border-blue-200/60 hover:bg-blue-100/60'
                           }`}
                         >
                           <div className="flex items-center gap-2 truncate">
@@ -870,7 +949,7 @@ export default function App() {
                             <span className="font-medium truncate">{topic.shortName}</span>
                           </div>
                           <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
-                            isChecked ? 'bg-white text-slate-900' : 'border border-slate-300'
+                            isChecked ? 'bg-white text-slate-900' : 'border border-blue-300'
                           }`}>
                             {isChecked && <Check className="size-3" />}
                           </div>
@@ -881,35 +960,34 @@ export default function App() {
                 </div>
               )}
 
-              {/* Visual Topic Filter Pills */}
-              <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              {/* Visual Topic Filter Pills - NO VARIABLE COUNT (User Request) */}
+              <div className="pt-2.5 border-t border-blue-100 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
                 <button
                   onClick={() => setSelectedTopicFilter('ALL')}
                   className={`h-8 px-3.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                     selectedTopicFilter === 'ALL'
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      ? 'bg-[#0f274a] text-blue-100 shadow-xs ring-1 ring-blue-500/30'
+                      : 'bg-blue-100/60 hover:bg-blue-100 text-slate-700 border border-blue-200/70'
                   }`}
                 >
-                  Todos los temas ({userInterestTopicIds.length})
+                  Todos
                 </button>
                 {topics.map(topic => {
                   if (!userInterestTopicIds.includes(topic.id)) return null;
                   const isSelected = selectedTopicFilter === topic.id;
-                  const varCount = variables.filter(v => v.topicId === topic.id).length;
+                  const warm = getTopicWarmBadge(topic.id);
                   return (
                     <button
                       key={topic.id}
                       onClick={() => setSelectedTopicFilter(selectedTopicFilter === topic.id ? 'ALL' : topic.id)}
-                      className={`h-8 px-3 rounded-lg text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition-colors ${
+                      className={`h-8 px-3 rounded-lg text-xs whitespace-nowrap flex items-center gap-1.5 transition-colors ${
                         isSelected
-                          ? 'bg-slate-900 text-white font-semibold shadow-2xs'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          ? warm.activePill
+                          : 'bg-blue-100/60 hover:bg-blue-100 text-slate-700 border border-blue-200/70'
                       }`}
                     >
                       <TopicIcon name={topic.iconName} className="size-3" />
                       <span>{topic.shortName}</span>
-                      <span className="text-[10px] font-mono opacity-60">({varCount})</span>
                     </button>
                   );
                 })}
@@ -919,12 +997,12 @@ export default function App() {
             {/* VISUAL CARDS GALLERY: Presentación de Temas mediante Imágenes */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-medium text-slate-500 px-1">
-                <span className="flex items-center gap-1.5 font-mono text-[11px] text-slate-600">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                  Galería Visual de Sectores Económicos (Clic para filtrar)
+                <span className="flex items-center gap-1.5 font-mono text-[11px] text-blue-900/70">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                  Sectores
                 </span>
-                <span className="text-[11px] font-mono text-slate-400">
-                  5 Temas · 29 Variables Oficiales
+                <span className="text-[11px] font-mono text-blue-900/50">
+                  13-10-2026
                 </span>
               </div>
 
@@ -934,6 +1012,7 @@ export default function App() {
                   const isSelected = selectedTopicFilter === topic.id;
                   const topicVars = variables.filter(v => v.topicId === topic.id);
                   const topVars = topicVars.slice(0, 3);
+                  const warm = getTopicWarmBadge(topic.id);
 
                   return (
                     <div
@@ -941,31 +1020,28 @@ export default function App() {
                       onClick={() => setSelectedTopicFilter(isSelected ? 'ALL' : topic.id)}
                       className={`group relative rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 h-60 flex flex-col justify-between p-4 ${
                         isSelected
-                          ? 'border-emerald-500 shadow-lg ring-2 ring-emerald-500/30'
-                          : 'border-slate-200/90 hover:border-slate-400 shadow-2xs hover:shadow-md'
+                          ? warm.cardBorder
+                          : 'border-blue-900/15 hover:border-blue-400/60 shadow-xs hover:shadow-md'
                       }`}
                     >
-                      {/* Background Image with Dark Vignette */}
-                      <img
-                        src={topic.imageUrl}
-                        alt={topic.imageAlt || topic.name}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 brightness-[0.60] contrast-[1.05]"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/65 to-slate-950/30" />
+                      {/* Background Technological Visualizer & Modern Subtle Backdrop */}
+                      <TopicTechVisualizer topicId={topic.id} accentColor={topic.accentColor} />
+                      {topic.imageUrl && (
+                        <img
+                          src={topic.imageUrl}
+                          alt={topic.imageAlt || topic.name}
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-20 mix-blend-luminosity brightness-50 contrast-125"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/15 pointer-events-none" />
 
-                      {/* Card Top: Icon, Title & Variable Badge */}
+                      {/* Card Top: Icon, Title & Status Badge */}
                       <div className="relative z-10 space-y-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-white font-mono text-[10px] font-bold border border-white/20">
-                            {topicVars.length} variables
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 backdrop-blur-md text-sky-200 font-mono text-[10px] font-bold border border-blue-300/30">
+                            OFICIAL
                           </span>
-
-                          {topic.visualSummary && (
-                            <span className="text-[10px] font-mono text-emerald-300 font-semibold px-2 py-0.5 rounded-md bg-slate-950/70 border border-emerald-500/30">
-                              {topic.visualSummary}
-                            </span>
-                          )}
                         </div>
 
                         <div className="flex items-center gap-2 pt-1">
@@ -980,7 +1056,7 @@ export default function App() {
 
                       {/* Card Center: High-Density Live Data Strip (100% Data-Driven) */}
                       <div className="relative z-10 my-auto py-1">
-                        <div className="bg-slate-950/75 backdrop-blur-md rounded-xl p-2.5 border border-white/10 space-y-1.5">
+                        <div className="bg-slate-950/80 backdrop-blur-md rounded-xl p-2.5 border border-blue-500/20 space-y-1.5">
                           {topVars.map(v => (
                             <div key={v.id} className="flex items-baseline justify-between text-xs gap-2">
                               <span className="text-slate-300 text-[11px] truncate font-medium">
@@ -1008,9 +1084,9 @@ export default function App() {
                         </div>
 
                         <span className={`text-[11px] font-semibold flex items-center gap-0.5 shrink-0 transition-colors ${
-                          isSelected ? 'text-emerald-400 font-bold' : 'text-white/90 group-hover:text-emerald-300'
+                          isSelected ? 'text-sky-300 font-bold' : 'text-white/90 group-hover:text-sky-300'
                         }`}>
-                          {isSelected ? 'Filtrado' : 'Ver todo'} <ChevronRight className="size-3" />
+                          {isSelected ? 'Filtro' : 'Ver'} <ChevronRight className="size-3" />
                         </span>
                       </div>
                     </div>
@@ -1027,17 +1103,20 @@ export default function App() {
                 return (
                   <section
                     key={topic.id}
-                    className="rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden space-y-5"
+                    className="rounded-2xl bg-white border border-blue-200/80 shadow-xs overflow-hidden space-y-5"
                   >
-                    {/* Thematic Panoramic Hero Banner with Image */}
-                    <div className="relative h-40 sm:h-44 overflow-hidden p-5 sm:p-6 flex flex-col justify-between">
-                      {/* Background photographic banner */}
-                      <img
-                        src={topic.imageUrl}
-                        alt={topic.imageAlt || topic.name}
-                        className="absolute inset-0 w-full h-full object-cover brightness-[0.55] contrast-[1.1]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/40" />
+                    {/* Thematic Panoramic Hero Banner with Technological Visualizer */}
+                    <div className="relative h-36 sm:h-40 overflow-hidden p-5 sm:p-6 flex flex-col justify-between">
+                      <TopicTechVisualizer topicId={topic.id} accentColor={topic.accentColor} />
+                      {topic.imageUrl && (
+                        <img
+                          src={topic.imageUrl}
+                          alt={topic.imageAlt || topic.name}
+                          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-luminosity brightness-50 contrast-125"
+                          loading="lazy"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/40 pointer-events-none" />
 
                       {/* Header overlay top */}
                       <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
@@ -1045,26 +1124,26 @@ export default function App() {
                           <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-xs">
                             <TopicIcon name={topic.iconName} className="size-4.5" />
                           </span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
-                            {topicVariables.length} variables oficiales conectadas
+                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-sky-200 font-mono text-[10px] font-bold border border-blue-400/30">
+                            Oficial · En vivo
                           </span>
                         </div>
 
                         <span className="text-[11px] font-mono text-slate-300 hidden sm:inline-block">
-                          Corte unificado: 13-10-2026
+                          13-10-2026
                         </span>
                       </div>
 
                       {/* Header overlay bottom */}
-                      <div className="relative z-10 space-y-2">
+                      <div className="relative z-10 space-y-1.5">
                         <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-xs">
                           {topic.name}
                         </h2>
 
                         {/* Official & Chamber Sources Badges */}
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-mono text-slate-300 mr-1">
-                            Fuentes primarias:
+                          <span className="text-[10px] font-mono text-sky-200/80 mr-1">
+                            Fuentes:
                           </span>
                           {topic.sources.map(source => (
                             <a
@@ -1077,7 +1156,7 @@ export default function App() {
                             >
                               <span className="font-bold">{source.name}</span>
                               <span className="text-[9px] opacity-75">
-                                ({source.type === 'publica' ? 'Pública' : 'Cámara'})
+                                ({source.type === 'publica' ? 'Oficial' : 'Cámara'})
                               </span>
                               <ExternalLink className="size-2.5 opacity-70" />
                             </a>
@@ -1086,7 +1165,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Connected Variables Grid (at least 5 per topic!) */}
+                    {/* Connected Variables Grid */}
                     <div className="p-5 sm:p-6 pt-0">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                         {topicVariables.map(variable => {
@@ -1101,17 +1180,13 @@ export default function App() {
                             <div
                               key={variable.id}
                               onClick={() => openVariableInspector(variable.id)}
-                              className="p-4 rounded-xl bg-slate-50/70 hover:bg-slate-50 border border-slate-200/80 hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] shadow-2xs hover:shadow-xs"
+                              className="p-4 rounded-xl bg-white hover:bg-blue-50/50 border border-blue-200/70 hover:border-blue-400/80 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] shadow-xs"
                             >
                               <div className="space-y-2">
                                 {/* Meta Tags */}
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border ${
-                                    variable.sourceType === 'publica'
-                                      ? 'bg-white border-blue-200 text-blue-700'
-                                      : 'bg-white border-emerald-200 text-emerald-700'
-                                  }`}>
-                                    {variable.source} · {variable.sourceType === 'publica' ? 'Pública' : 'Cámara'}
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-50 border border-blue-200/80 text-blue-900">
+                                    {variable.source}
                                   </span>
 
                                   <span className="text-[10px] font-mono text-slate-400">
@@ -1120,19 +1195,19 @@ export default function App() {
                                 </div>
 
                                 {/* Variable Name */}
-                                <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors leading-snug line-clamp-2">
+                                <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-950 transition-colors leading-snug line-clamp-2">
                                   {variable.name}
                                 </h3>
                               </div>
 
                               {/* Value Display + Mini Sparkline */}
-                              <div className="pt-3 mt-3 border-t border-slate-200/50 flex items-end justify-between gap-2">
+                              <div className="pt-3 mt-3 border-t border-blue-100 flex items-end justify-between gap-2">
                                 <div>
                                   <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-slate-950 tabular-nums block">
                                     {formatVariableValue(variable)}
                                   </span>
                                   <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
-                                    Corte: {variable.lastUpdated}
+                                    {variable.lastUpdated}
                                   </span>
                                 </div>
 
@@ -1180,30 +1255,30 @@ export default function App() {
                   {/* DÓLAR COMERCIAL PTAX VENDA */}
                   <div
                     onClick={() => openVariableInspector('bcb_dolar_ptax_venda')}
-                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
                   >
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-semibold text-slate-800">Dólar Comercial PTAX (Venda)</span>
-                      <span className="font-mono text-slate-400">BCB · Oficial</span>
+                      <span className="font-bold text-slate-800">Dólar Comercial PTAX</span>
+                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">BCB Oficial</span>
                     </div>
 
                     <div className="flex items-baseline justify-between gap-3 my-2">
                       <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                        R$ 5,420
+                        R$ 5,680
                       </span>
                       <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
                         <ArrowDownRight className="size-3.5" /> -0.15%
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                      Cotação oficial de venda apurada pelo Banco Central do Brasil através da média das consultas do sistema PTAX. Compra: R$ 5,414 | Venda: R$ 5,420 ao corte de 13-10-2026.
+                    <p className="text-xs font-mono text-slate-600 mt-2">
+                      Compra: R$ 5,674 · Venda: R$ 5,680
                     </p>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>Ajuste: 13-10-2026</span>
-                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
-                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>13-10-2026</span>
+                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                        Ver histórico <ChevronRight className="size-3" />
                       </span>
                     </div>
                   </div>
@@ -1211,64 +1286,64 @@ export default function App() {
                   {/* DÓLAR TURISMO PAPEL MOEDA */}
                   <div
                     onClick={() => openVariableInspector('bcb_dolar_turismo')}
-                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
                   >
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-semibold text-slate-800">Dólar Turismo Papel Moeda</span>
-                      <span className="font-mono text-slate-400">ABRACAM · Espécie</span>
+                      <span className="font-bold text-slate-800">Dólar Turismo</span>
+                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">ABRACAM</span>
                     </div>
 
                     <div className="flex items-baseline justify-between gap-3 my-2">
                       <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                        R$ 5,640
+                        R$ 5,920
                       </span>
                       <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
                         <ArrowDownRight className="size-3.5" /> -0.10%
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                      Cotação média de balcão para compra e venda de papel-moeda físico nas instituições e casas de câmbio associadas à ABRACAM. Compra: R$ 5,480 | Venda: R$ 5,640.
+                    <p className="text-xs font-mono text-slate-600 mt-2">
+                      Compra: R$ 5,750 · Venda: R$ 5,920
                     </p>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>Ajuste: 13-10-2026</span>
-                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
-                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>13-10-2026</span>
+                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                        Ver histórico <ChevronRight className="size-3" />
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Grid de Outras Cotações Oficiais (Euro, Libra, Reservas, Ouro) */}
+                {/* Grid de Outras Cotações Oficiais */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div
                     onClick={() => openVariableInspector('bcb_euro_ptax')}
-                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer shadow-2xs"
+                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 hover:border-blue-400 cursor-pointer shadow-xs"
                   >
-                    <span className="text-[11px] text-slate-400 block font-mono">Euro PTAX (BCB)</span>
-                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 5,910</span>
-                    <span className="text-[10px] text-emerald-600 font-mono">+0.22% hoje</span>
+                    <span className="text-[11px] text-slate-400 block font-mono">Euro PTAX</span>
+                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 6,180</span>
+                    <span className="text-[10px] text-emerald-600 font-mono">+0.22%</span>
                   </div>
                   <div
-                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs"
+                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs"
                   >
-                    <span className="text-[11px] text-slate-400 block font-mono">Libra Esterlina (BCB)</span>
+                    <span className="text-[11px] text-slate-400 block font-mono">Libra (BCB)</span>
                     <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 7,122</span>
-                    <span className="text-[10px] text-emerald-600 font-mono">+0.18% hoje</span>
+                    <span className="text-[10px] text-emerald-600 font-mono">+0.18%</span>
                   </div>
                   <div
                     onClick={() => openVariableInspector('bcb_reservas_internacionais')}
-                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer shadow-2xs"
+                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 hover:border-blue-400 cursor-pointer shadow-xs"
                   >
                     <span className="text-[11px] text-slate-400 block font-mono">Reservas BCB</span>
                     <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">US$ 355,4 Bi</span>
                     <span className="text-[10px] text-slate-500 font-mono">Líquidas</span>
                   </div>
                   <div
-                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs"
+                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs"
                   >
-                    <span className="text-[11px] text-slate-400 block font-mono">Ouro 250g (B3)</span>
+                    <span className="text-[11px] text-slate-400 block font-mono">Ouro (B3)</span>
                     <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 478,50</span>
                     <span className="text-[10px] text-emerald-600 font-mono">Por grama</span>
                   </div>
@@ -1281,11 +1356,11 @@ export default function App() {
                 {bnaBillete && (
                   <div
                     onClick={() => openVariableInspector(bnaBillete.id)}
-                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
                   >
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-semibold text-slate-800">Dólar Minorista Billete</span>
-                      <span className="font-mono text-slate-400">BNA · Ventanilla</span>
+                      <span className="font-bold text-slate-800">Dólar Minorista Billete</span>
+                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">BNA Ventanilla</span>
                     </div>
 
                     <div className="flex items-baseline justify-between gap-3 my-2">
@@ -1297,14 +1372,14 @@ export default function App() {
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                      Cotización oficial de venta en ventanilla en sucursales del Banco Nación. Base de cálculo impositiva para turismo y consumos. Compra: $1.485,00 | Venta: $1.535,00 al 13-10-2026.
+                    <p className="text-xs font-mono text-slate-600 mt-2">
+                      Compra: $1.005,00 · Venta: $1.025,00
                     </p>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>Ajuste: 13-10-2026</span>
-                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
-                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>13-10-2026</span>
+                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                        Ver histórico <ChevronRight className="size-3" />
                       </span>
                     </div>
                   </div>
@@ -1314,11 +1389,11 @@ export default function App() {
                 {bnaDivisa && (
                   <div
                     onClick={() => openVariableInspector(bnaDivisa.id)}
-                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
                   >
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-semibold text-slate-800">Dólar Minorista Divisa</span>
-                      <span className="font-mono text-slate-400">BNA · Transferencia</span>
+                      <span className="font-bold text-slate-800">Dólar Divisa Transferencia</span>
+                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">BNA Electrónico</span>
                     </div>
 
                     <div className="flex items-baseline justify-between gap-3 my-2">
@@ -1330,14 +1405,14 @@ export default function App() {
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                      Cotización para transferencias y operaciones electrónicas bancarias reguladas por el Banco Nación. Compra: $1.508,00 | Venta: $1.517,00 al 13-10-2026.
+                    <p className="text-xs font-mono text-slate-600 mt-2">
+                      Compra: $995,00 · Venta: $1.005,00
                     </p>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>Ajuste: 13-10-2026</span>
-                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
-                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>13-10-2026</span>
+                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                        Ver histórico <ChevronRight className="size-3" />
                       </span>
                     </div>
                   </div>
@@ -1347,26 +1422,26 @@ export default function App() {
 
             {/* Quick Chart Inline Container */}
             {activeVar && (
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-100">
                   <div>
                     <div className="text-xs text-slate-400 font-mono">
-                      {activeVar.source} · {activeVar.frequency} · {activeVar.sourceType === 'publica' ? 'Entidad Pública' : 'Cámara Sectorial'}
+                      {activeVar.source} · {activeVar.frequency}
                     </div>
                     <h3 className="text-base font-bold text-slate-950 mt-0.5">
                       {activeVar.name}
                     </h3>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg self-start sm:self-auto">
+                  <div className="flex items-center gap-1 bg-blue-100/60 p-0.5 rounded-lg self-start sm:self-auto border border-blue-200/60">
                     {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
                       <button
                         key={range}
                         onClick={() => setChartRange(range)}
                         className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
                           chartRange === range
-                            ? 'bg-white text-slate-950 shadow-2xs'
-                            : 'text-slate-500 hover:text-slate-900'
+                            ? 'bg-[#0f274a] text-blue-100 shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
                         {range}
@@ -1379,16 +1454,16 @@ export default function App() {
                 <div className="h-64 w-full pt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#bfdbfe" strokeOpacity={0.4} />
                       <XAxis
                         dataKey="date"
                         tickFormatter={formatChartDate}
-                        tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                        tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                         tickLine={false}
-                        axisLine={{ stroke: '#f1f5f9' }}
+                        axisLine={{ stroke: '#bfdbfe', strokeOpacity: 0.5 }}
                       />
                       <YAxis
-                        tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                        tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                         tickLine={false}
                         axisLine={false}
                         domain={['auto', 'auto']}
@@ -1396,24 +1471,24 @@ export default function App() {
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#0f172a',
-                          border: 'none',
+                          backgroundColor: '#0a192f',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
                           borderRadius: '8px',
-                          color: '#fff',
+                          color: '#eff6ff',
                           fontSize: '11px',
                           fontFamily: 'JetBrains Mono'
                         }}
-                        labelStyle={{ color: '#94a3b8' }}
+                        labelStyle={{ color: '#93c5fd' }}
                         labelFormatter={(label) => `Fecha: ${label}`}
                         formatter={(val: any) => [`${Number(val).toLocaleString('es-AR')} ${activeVar.unit}`, activeVar.name]}
                       />
                       <Line
                         type="monotone"
                         dataKey="value"
-                        stroke="#0f172a"
-                        strokeWidth={2}
+                        stroke="#2563eb"
+                        strokeWidth={2.2}
                         dot={false}
-                        activeDot={{ r: 4 }}
+                        activeDot={{ r: 4, fill: '#38bdf8' }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -1429,31 +1504,37 @@ export default function App() {
         {activeTab === 'plazo_fijo' && (
           <div className="space-y-6">
             {/* Simulator Box */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-950">Simulador de Depósito a Plazo Fijo</h3>
-                <span className="text-xs font-mono text-slate-400">TNA Oficiales al 13-10-2026</span>
+                <h3 className="text-sm font-bold text-slate-950">
+                  {selectedCountry === 'BR' ? 'Simulador de Renda Fixa CDB' : 'Simulador de Plazo Fijo'}
+                </h3>
+                <span className="text-xs font-mono text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/60">
+                  13-10-2026
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">Monto en pesos (ARS):</label>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">
+                    {selectedCountry === 'BR' ? 'Monto em reais (BRL):' : 'Monto en pesos (ARS):'}
+                  </label>
                   <input
                     type="number"
                     value={simAmount}
                     onChange={e => setSimAmount(Math.max(1000, Number(e.target.value)))}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium focus:outline-none focus:border-slate-900 focus:bg-white transition-colors"
+                    className="w-full h-10 px-3 bg-blue-50/30 border border-blue-200 rounded-xl text-sm font-mono font-medium focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">Plazo en días:</label>
+                  <label className="text-xs text-slate-500 font-medium block mb-1">Plazo:</label>
                   <select
                     value={simDays}
                     onChange={e => setSimDays(Number(e.target.value))}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-slate-900 focus:bg-white transition-colors"
+                    className="w-full h-10 px-3 bg-blue-50/30 border border-blue-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
                   >
-                    <option value={30}>30 días (Mes completo)</option>
+                    <option value={30}>30 días (Mes)</option>
                     <option value={60}>60 días (Bimestral)</option>
                     <option value={90}>90 días (Trimestral)</option>
                     <option value={180}>180 días (Semestral)</option>
@@ -1465,24 +1546,28 @@ export default function App() {
                 const topGain = calculateBankReturn(topBank.tna, simAmount, simDays);
                 const bnaGain = calculateBankReturn(bnaBank.tna, simAmount, simDays);
                 return (
-                  <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-xs text-slate-400 block font-mono">Máximo Mercado: {topBank.shortName} ({topBank.tna.toFixed(2)}%)</span>
-                      <span className="text-xl font-bold font-mono tabular-nums text-slate-900 block mt-1">
+                  <div className="mt-4 pt-4 border-t border-blue-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-200/80">
+                      <span className="text-xs text-blue-900/80 block font-mono">
+                        Máximo: {topBank.shortName} ({topBank.tna.toFixed(2)}%)
+                      </span>
+                      <span className="text-xl font-bold font-mono tabular-nums text-emerald-700 block mt-1">
                         +{formatArs(topGain.interest)}
                       </span>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">
-                        Total a cobrar: <strong className="font-mono text-slate-700">{formatArs(topGain.total)}</strong>
+                      <span className="text-[11px] text-slate-600 block mt-0.5">
+                        Total: <strong className="font-mono text-slate-900">{formatArs(topGain.total)}</strong>
                       </span>
                     </div>
 
-                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-xs text-slate-400 block font-mono">Banco Nación: BNA ({bnaBank.tna.toFixed(2)}%)</span>
-                      <span className="text-xl font-bold font-mono tabular-nums text-slate-900 block mt-1">
+                    <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80">
+                      <span className="text-xs text-slate-700 block font-mono">
+                        {selectedCountry === 'BR' ? 'Banco Público' : 'Banco Nación: BNA'} ({bnaBank.tna.toFixed(2)}%)
+                      </span>
+                      <span className="text-xl font-bold font-mono tabular-nums text-slate-950 block mt-1">
                         +{formatArs(bnaGain.interest)}
                       </span>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">
-                        Total a cobrar: <strong className="font-mono text-slate-700">{formatArs(bnaGain.total)}</strong>
+                      <span className="text-[11px] text-slate-600 block mt-0.5">
+                        Total: <strong className="font-mono text-slate-900">{formatArs(bnaGain.total)}</strong>
                       </span>
                     </div>
                   </div>
@@ -1490,35 +1575,35 @@ export default function App() {
               })()}
             </div>
 
-            {/* Bank Filter Tabs */}
+            {/* Bank Filter Tabs - NO COUNT (User Request) */}
             <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
               <div className="flex gap-1 overflow-x-auto scrollbar-none">
                 <button
                   onClick={() => setBankTypeFilter('all')}
                   className={`h-8 px-3 rounded-lg font-medium whitespace-nowrap transition-colors ${
                     bankTypeFilter === 'all'
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#0f274a] text-blue-100 shadow-xs ring-1 ring-blue-500/30'
+                      : 'bg-white border border-blue-200/70 text-slate-700 hover:bg-blue-50'
                   }`}
                 >
-                  Todos ({bankRates.length})
+                  Todos
                 </button>
                 <button
                   onClick={() => setBankTypeFilter('non_clients')}
                   className={`h-8 px-3 rounded-lg font-medium whitespace-nowrap transition-colors ${
                     bankTypeFilter === 'non_clients'
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#0f274a] text-blue-100 shadow-xs ring-1 ring-blue-500/30'
+                      : 'bg-white border border-blue-200/70 text-slate-700 hover:bg-blue-50'
                   }`}
                 >
-                  No Clientes Web
+                  No Clientes
                 </button>
                 <button
                   onClick={() => setBankTypeFilter('publico')}
                   className={`h-8 px-3 rounded-lg font-medium whitespace-nowrap transition-colors ${
                     bankTypeFilter === 'publico'
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#0f274a] text-blue-100 shadow-xs ring-1 ring-blue-500/30'
+                      : 'bg-white border border-blue-200/70 text-slate-700 hover:bg-blue-50'
                   }`}
                 >
                   Públicos
@@ -1527,8 +1612,8 @@ export default function App() {
                   onClick={() => setBankTypeFilter('privado')}
                   className={`h-8 px-3 rounded-lg font-medium whitespace-nowrap transition-colors ${
                     bankTypeFilter === 'privado'
-                      ? 'bg-slate-900 text-white shadow-2xs'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      ? 'bg-[#0f274a] text-blue-100 shadow-xs ring-1 ring-blue-500/30'
+                      : 'bg-white border border-blue-200/70 text-slate-700 hover:bg-blue-50'
                   }`}
                 >
                   Privados
@@ -1536,12 +1621,12 @@ export default function App() {
               </div>
 
               <span className="text-slate-400 font-mono text-[11px]">
-                Tasas a 30 días canal digital
+                Canal digital · 30 días
               </span>
             </div>
 
             {/* List of Banks */}
-            <div className="divide-y divide-slate-200/60 bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-2xs">
+            <div className="divide-y divide-blue-100 bg-white rounded-2xl border border-blue-200/80 overflow-hidden shadow-xs">
               {filteredBanks.map((bank, idx) => {
                 const gain = calculateBankReturn(bank.tna, simAmount, simDays);
                 const isBNA = bank.id === 'banco_nacion';
@@ -1550,7 +1635,7 @@ export default function App() {
                   <div
                     key={bank.id}
                     className={`p-4 flex items-center justify-between gap-4 transition-colors ${
-                      isBNA ? 'bg-slate-50/80' : 'hover:bg-slate-50/40'
+                      isBNA ? 'bg-blue-50/50' : 'hover:bg-blue-50/30'
                     }`}
                   >
                     <div className="min-w-0 flex-1">
@@ -1561,14 +1646,14 @@ export default function App() {
                         {bank.nonClientOnline && (
                           <>
                             <span>·</span>
-                            <span className="text-emerald-600 font-sans font-medium">No Clientes Web</span>
+                            <span className="text-blue-800 font-sans font-medium">No Clientes</span>
                           </>
                         )}
                       </div>
 
                       <h3 className="text-sm font-bold text-slate-950 truncate mt-0.5">
                         {bank.bankName}
-                        {isBNA && <span className="ml-1.5 text-xs text-slate-500 font-normal font-mono">(Oficial BNA)</span>}
+                        {isBNA && <span className="ml-1.5 text-xs text-blue-800 font-normal font-mono">(Oficial BNA)</span>}
                       </h3>
 
                       <span className="text-xs text-slate-500 block mt-0.5">
@@ -1596,14 +1681,14 @@ export default function App() {
         {/* ============================================================ */}
         {activeTab === 'tendencias' && (
           <div className="space-y-6">
-            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
+            <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs">
               <label className="text-xs text-slate-500 font-medium block mb-1.5">
-                Seleccionar variable para graficar tendencias históricas:
+                Variable:
               </label>
               <select
                 value={selectedVarId}
                 onChange={e => setSelectedVarId(e.target.value)}
-                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-colors"
+                className="w-full h-11 px-3 bg-blue-50/30 border border-blue-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-colors"
               >
                 {topics.map(topic => (
                   <optgroup key={topic.id} label={`Tema: ${topic.name}`}>
@@ -1620,25 +1705,27 @@ export default function App() {
 
               {activeVar && (
                 <div className="mt-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-blue-100">
                     <div>
                       <div className="text-xs font-mono text-slate-400">
-                        {activeVar.source} · {activeVar.frequency} · {activeVar.sourceType === 'publica' ? 'Entidad Pública Oficial' : 'Cámara Sectorial'}
+                        {activeVar.source} · {activeVar.frequency}
                       </div>
                       <h3 className="text-base font-bold text-slate-950 mt-0.5">{activeVar.name}</h3>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Valor al 13-10-2026: <strong className="font-mono text-slate-900">{formatVariableValue(activeVar)}</strong>
+                      <div className="text-xs text-slate-600 mt-0.5">
+                        13-10-2026: <strong className="font-mono text-slate-950">{formatVariableValue(activeVar)}</strong>
                       </div>
                     </div>
 
                     {/* Chart Range Switcher: 30D, 90D, 1Y, 3Y */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg self-start sm:self-auto">
+                    <div className="flex items-center gap-1 bg-blue-100/60 p-0.5 rounded-lg self-start sm:self-auto border border-blue-200/60">
                       {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
                         <button
                           key={range}
                           onClick={() => setChartRange(range)}
                           className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                            chartRange === range ? 'bg-white text-slate-950 shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                            chartRange === range
+                              ? 'bg-[#0f274a] text-blue-100 shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
                           {range}
@@ -1650,42 +1737,39 @@ export default function App() {
                   {/* Summary Metric Cards for Selected Period */}
                   {chartStats && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="text-[11px] font-medium text-slate-400">Variación {chartRange}</div>
+                      <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/60">
+                        <div className="text-[11px] font-medium text-slate-500">Variación</div>
                         <div className="flex items-baseline gap-1.5 mt-0.5">
                           <span className={`text-sm font-extrabold font-mono tabular-nums ${
                             chartStats.nominalDiff > 0
-                              ? 'text-emerald-600'
+                              ? 'text-emerald-700'
                               : chartStats.nominalDiff < 0
-                              ? 'text-rose-600'
+                              ? 'text-rose-700'
                               : 'text-slate-700'
                           }`}>
                             {chartStats.nominalDiff > 0 ? '+' : ''}{chartStats.percentChange.toFixed(2)}%
                           </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            ({chartStats.nominalDiff > 0 ? '+' : ''}{chartStats.nominalDiff.toLocaleString('es-AR', { maximumFractionDigits: 2 })})
-                          </span>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="text-[11px] font-medium text-slate-400">Valor Inicial ({formatChartDate(chartStats.firstPoint.date)})</div>
+                      <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/60">
+                        <div className="text-[11px] font-medium text-slate-500">Inicial ({formatChartDate(chartStats.firstPoint.date)})</div>
                         <div className="text-sm font-extrabold font-mono tabular-nums text-slate-900 mt-0.5">
-                          {chartStats.initialVal.toLocaleString('es-AR')} <span className="text-[10px] font-normal text-slate-400">{activeVar.unit}</span>
+                          {chartStats.initialVal.toLocaleString('es-AR')} <span className="text-[10px] font-normal text-slate-500">{activeVar.unit}</span>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="text-[11px] font-medium text-slate-400">Mínimo en {chartRange}</div>
+                      <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/60">
+                        <div className="text-[11px] font-medium text-slate-500">Mínimo</div>
                         <div className="text-sm font-extrabold font-mono tabular-nums text-slate-900 mt-0.5">
-                          {chartStats.minVal.toLocaleString('es-AR')} <span className="text-[10px] font-normal text-slate-400">{activeVar.unit}</span>
+                          {chartStats.minVal.toLocaleString('es-AR')} <span className="text-[10px] font-normal text-slate-500">{activeVar.unit}</span>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="text-[11px] font-medium text-slate-400">Máximo en {chartRange}</div>
+                      <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/60">
+                        <div className="text-[11px] font-medium text-slate-500">Máximo</div>
                         <div className="text-sm font-extrabold font-mono tabular-nums text-slate-900 mt-0.5">
-                          {chartStats.maxVal.toLocaleString('es-AR')} <span className="text-[10px] font-normal text-slate-400">{activeVar.unit}</span>
+                          {chartStats.maxVal.toLocaleString('es-AR')} <span className="text-[10px] font-normal text-slate-500">{activeVar.unit}</span>
                         </div>
                       </div>
                     </div>
@@ -1694,16 +1778,16 @@ export default function App() {
                   <div className="h-72 w-full pt-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
+                        <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#bfdbfe" strokeOpacity={0.4} />
                         <XAxis
                           dataKey="date"
                           tickFormatter={formatChartDate}
-                          tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+                          tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                           tickLine={false}
-                          axisLine={{ stroke: '#f1f5f9' }}
+                          axisLine={{ stroke: '#bfdbfe', strokeOpacity: 0.5 }}
                         />
                         <YAxis
-                          tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono' }}
+                          tick={{ fill: '#64748b', fontSize: 11, fontFamily: 'JetBrains Mono' }}
                           tickLine={false}
                           axisLine={false}
                           domain={['auto', 'auto']}
@@ -1711,30 +1795,30 @@ export default function App() {
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: '#0f172a',
-                            border: 'none',
+                            backgroundColor: '#0a192f',
+                            border: '1px solid rgba(59, 130, 246, 0.3)',
                             borderRadius: '8px',
-                            color: '#fff',
+                            color: '#eff6ff',
                             fontSize: '11px',
                             fontFamily: 'JetBrains Mono'
                           }}
-                          labelStyle={{ color: '#94a3b8' }}
+                          labelStyle={{ color: '#93c5fd' }}
                           labelFormatter={(label) => `Fecha: ${label}`}
                           formatter={(val: any) => [`${Number(val).toLocaleString('es-AR')} ${activeVar.unit}`, activeVar.name]}
                         />
                         <Line
                           type="monotone"
                           dataKey="value"
-                          stroke="#0f172a"
+                          stroke="#2563eb"
                           strokeWidth={2.5}
-                          dot={{ r: 2, fill: '#0f172a' }}
-                          activeDot={{ r: 5 }}
+                          dot={{ r: 2, fill: '#38bdf8' }}
+                          activeDot={{ r: 5, fill: '#1d4ed8' }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
 
-                  <p className="text-xs text-slate-500 leading-relaxed pt-2">
+                  <p className="text-xs text-slate-600 leading-relaxed pt-2 font-mono">
                     {activeVar.description}
                   </p>
                 </div>
@@ -1747,21 +1831,21 @@ export default function App() {
         {/* TAB 5: FUENTES PÚBLICAS Y CÁMARAS SECTORIALES */}
         {/* ============================================================ */}
         {activeTab === 'fuentes' && (
-          <div className="space-y-6">
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-3">
-              <div className="flex items-center gap-2 text-xs font-mono text-blue-600">
+          <div className="space-y-5">
+            <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-2">
+              <div className="flex items-center gap-2 text-xs font-mono text-blue-700">
                 <BookOpen className="size-4" />
-                <span>Transparencia y Rigor Metodológico · 13-10-2026</span>
+                <span>Transparencia · Fuentes Primarias</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-950">
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
                 {selectedCountry === 'BR'
-                  ? 'Diretório de Fontes Oficiais & Câmaras Setoriais do Brasil'
-                  : 'Directorio de Fuentes Públicas y Cámaras Sectoriales de Argentina'}
+                  ? 'Fontes Oficiais & Câmaras (Brasil)'
+                  : 'Fuentes Oficiales y Cámaras (Argentina)'}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 {selectedCountry === 'BR'
-                  ? 'O Econoapp não cria nem estima valores: audita e consome dados fornecidos diretamente pelas entidades soberanas do Sistema Financeiro Nacional e câmaras representativas da produção, varejo e mercados de capitais.'
-                  : 'Econoapp no inventa valores: releva y procesa datos suministrados directamente por entidades oficiales del Estado Nacional y cámaras representativas de la industria, comercio y finanzas.'}
+                  ? 'Dados auditados diretamente das entidades soberanas do Sistema Financeiro e entidades setoriais.'
+                  : 'Datos auditados directamente del Estado Nacional y cámaras representativas de la producción y finanzas.'}
               </p>
             </div>
 
@@ -1769,101 +1853,101 @@ export default function App() {
               /* FONTES BRASILEIRAS */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Entidades Públicas Oficiais do Brasil */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 border-b border-blue-100 pb-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    <h3 className="text-sm font-bold text-slate-950">Entidades Públicas do Brasil</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">Públicas Oficiais (BR)</h3>
                   </div>
 
-                  <div className="space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">BCB</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">bcb.gov.br</span>
+                        <span className="text-[11px] text-blue-700 font-mono">bcb.gov.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Banco Central do Brasil. Fixa a Taxa Selic Meta (Copom), apura a PTAX diária oficial, reservas internacionais e a prévia do PIB (IBC-Br).</p>
+                      <p className="text-slate-600 mt-1">Taxa Selic Meta, PTAX diária oficial e reservas internacionais.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">IBGE</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">ibge.gov.br</span>
+                        <span className="text-[11px] text-blue-700 font-mono">ibge.gov.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Instituto Brasileiro de Geografia e Estatística. Calcula a inflação oficial (IPCA), INPC, Produção Industrial Mensal (PIM) e Varejo (PMC).</p>
+                      <p className="text-slate-600 mt-1">Inflação oficial (IPCA), INPC e produção industrial.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">Tesouro Nacional</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">tesourodireto.com.br</span>
+                        <span className="text-[11px] text-blue-700 font-mono">tesourodireto.com.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Secretaria do Tesouro Nacional. Gerencia a dívida pública federal e a plataforma de títulos de renda fixa Tesouro Direto (Selic, Prefixado, IPCA+).</p>
+                      <p className="text-slate-600 mt-1">Dívida pública e taxas do Tesouro Direto (Selic, Prefixado, IPCA+).</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">SECEX / MDIC</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">gov.br/mdic</span>
+                        <span className="text-[11px] text-blue-700 font-mono">gov.br/mdic</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Secretaria de Comércio Exterior. Publica o saldo da balança comercial brasileira, dados de exportação do agronegócio e importações.</p>
+                      <p className="text-slate-600 mt-1">Balança comercial, exportações do agro e importações.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">MTE</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">gov.br/trabalho</span>
+                        <span className="text-[11px] text-blue-700 font-mono">gov.br/trabalho</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Ministério do Trabalho e Emprego. Responsável pela atualização legal do Salário Mínimo Nacional e dados formais de trabalho (CAGED).</p>
+                      <p className="text-slate-600 mt-1">Salário Mínimo Nacional e emprego formal (CAGED).</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Câmaras Setoriais & Bolsas do Brasil */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                    <h3 className="text-sm font-bold text-slate-950">Câmaras Setoriais & Mercados (Brasil)</h3>
+                <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 border-b border-blue-100 pb-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">Mercados & Setores (BR)</h3>
                   </div>
 
-                  <div className="space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">B3 S.A.</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">b3.com.br</span>
+                        <span className="text-[11px] text-sky-700 font-mono">b3.com.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Brasil, Bolsa, Balcão. Apura diariamente a Taxa DI / CDI Over, contratos futuros de câmbio e infraestrutura dos mercados financeiros.</p>
+                      <p className="text-slate-600 mt-1">Taxa DI / CDI Over, contratos futuros de dólar e mercado acionário.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">FGV IBRE</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">ibre.fgv.br</span>
+                        <span className="text-[11px] text-sky-700 font-mono">ibre.fgv.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Fundação Getulio Vargas. Calcula o IGP-M (índice de reajuste de aluguéis), IPC-S e as sondagens de confiança do consumidor e indústria.</p>
+                      <p className="text-slate-600 mt-1">Índice IGP-M (reajuste de aluguéis) e IPC-S.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">ANFAVEA</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">anfavea.com.br</span>
+                        <span className="text-[11px] text-sky-700 font-mono">anfavea.com.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Associação Nacional dos Fabricantes de Veículos Automotores. Divulga a produção física, exportação e mercado de automóveis e caminhões.</p>
+                      <p className="text-slate-600 mt-1">Produção e exportação de veículos e máquinas agrícolas.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">ANBIMA</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">anbima.com.br</span>
+                        <span className="text-[11px] text-sky-700 font-mono">anbima.com.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Associação dos Mercados Financeiro e de Capitais. Apura o Índice de Debêntures (IDA) e rentabilidades médias de renda fixa privada.</p>
+                      <p className="text-slate-600 mt-1">Índices de debêntures e taxas médias de CDB e renda fixa privada.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">FENABRAVE & ABRAS</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">fenabrave.org.br</span>
+                        <span className="text-[11px] text-sky-700 font-mono">fenabrave.org.br</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Federação Nacional da Distribuição de Veículos e Associação Brasileira de Supermercados. Monitoram emplacamentos e consumo nos lares.</p>
+                      <p className="text-slate-600 mt-1">Emplacamento de veículos e índice de consumo nos supermercados.</p>
                     </div>
                   </div>
                 </div>
@@ -1872,109 +1956,101 @@ export default function App() {
               /* FONTES ARGENTINAS */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Fuentes Públicas Oficiales */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 border-b border-blue-100 pb-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    <h3 className="text-sm font-bold text-slate-950">Entidades Públicas Oficiales</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">Públicas Oficiales (AR)</h3>
                   </div>
 
-                  <div className="space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">BCRA</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">bcra.gob.ar</span>
+                        <span className="text-[11px] text-blue-700 font-mono">bcra.gob.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Banco Central de la República Argentina. Informa Reservas, UVA, CER, BADLAR, ICL y el Relevamiento de Expectativas de Mercado (REM).</p>
+                      <p className="text-slate-600 mt-1">Reservas, UVA, CER, BADLAR, ICL y relevamiento de expectativas (REM).</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">BNA</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">bna.com.ar</span>
+                        <span className="text-[11px] text-blue-700 font-mono">bna.com.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Banco de la Nación Argentina. Publica cotización oficial minorista de Dólar Billete y Dólar Divisa, y tasas de Plazo Fijo electrónico.</p>
+                      <p className="text-slate-600 mt-1">Cotizaciones minoristas oficiales de billete/divisa y tasas de plazo fijo.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">INDEC</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">indec.gob.ar</span>
+                        <span className="text-[11px] text-blue-700 font-mono">indec.gob.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Instituto Nacional de Estadística y Censos. Publica IPC, Canasta Básica Total y Alimentaria, IPIM y Estimador de Actividad (EMAE).</p>
+                      <p className="text-slate-600 mt-1">IPC nacional, Canasta Básica Total, IPIM mayorista y actividad (EMAE).</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">ARCA (ex AFIP)</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">arca.gob.ar</span>
+                        <span className="text-[11px] text-blue-700 font-mono">arca.gob.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Agencia de Recaudación y Control Aduanero. Emite los informes mensuales de recaudación tributaria nacional consolidada.</p>
+                      <p className="text-slate-600 mt-1">Recaudación tributaria consolidada y liquidación aduanera.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900 font-mono">MECON / Sec. Trabajo</strong>
-                        <span className="text-[11px] text-blue-600 font-mono">argentina.gob.ar</span>
+                        <strong className="text-slate-900 font-mono">Sec. Trabajo</strong>
+                        <span className="text-[11px] text-blue-700 font-mono">argentina.gob.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Secretaría de Trabajo. Elabora la Remuneración Imponible Promedio de los Trabajadores Estables (RIPTE).</p>
+                      <p className="text-slate-600 mt-1">Remuneración promedio de trabajadores estables (RIPTE).</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Cámaras Sectoriales y Bolsas */}
-                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                    <h3 className="text-sm font-bold text-slate-950">Cámaras Sectoriales y Bolsas</h3>
+                <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2 border-b border-blue-100 pb-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">Cámaras y Bolsas (AR)</h3>
                   </div>
 
-                  <div className="space-y-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="space-y-2.5 text-xs">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">CIARA-CEC</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">ciaracec.com.ar</span>
+                        <span className="text-[11px] text-sky-700 font-mono">ciaracec.com.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Cámara de la Industria Aceitera y Centro de Exportadores de Cereales. Publica la liquidación semanal efectiva de divisas del agro.</p>
+                      <p className="text-slate-600 mt-1">Liquidación efectiva de divisas del complejo cerealero y oleaginoso.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">BYMA</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">byma.com.ar</span>
+                        <span className="text-[11px] text-sky-700 font-mono">byma.com.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Bolsas y Mercados Argentinos. Provee las cotizaciones bursátiles implícitas Dólar MEP, Dólar CCL y tasas de caución a 1 día.</p>
+                      <p className="text-slate-600 mt-1">Cotizaciones implícitas Dólar MEP, CCL y tasas de caución bursátil.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">ADEFA</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">adefa.org.ar</span>
+                        <span className="text-[11px] text-sky-700 font-mono">adefa.org.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Asociación de Fábricas de Automotores. Informa mensualmente la producción nacional, despachos y exportaciones del sector.</p>
+                      <p className="text-slate-600 mt-1">Producción, ventas mayoristas y exportaciones automotrices.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">CAME</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">redcame.org.ar</span>
+                        <span className="text-[11px] text-sky-700 font-mono">redcame.org.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Confederación Argentina de la Mediana Empresa. Releva el Índice de Ventas Minoristas Pymes en todo el territorio nacional.</p>
+                      <p className="text-slate-600 mt-1">Ventas minoristas pyme en el territorio nacional.</p>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
                         <strong className="text-slate-900 font-mono">CAC</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">camarco.org.ar</span>
+                        <span className="text-[11px] text-sky-700 font-mono">camarco.org.ar</span>
                       </div>
-                      <p className="text-slate-500 mt-1">Cámara Argentina de la Construcción. Elabora el Índice del Costo de Construcción por metro cuadrado (materiales y mano de obra).</p>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <strong className="text-slate-900 font-mono">Colegio de Escribanos CABA</strong>
-                        <span className="text-[11px] text-emerald-600 font-mono">colegio-escribanos.org.ar</span>
-                      </div>
-                      <p className="text-slate-500 mt-1">Releva y audita mensualmente la cantidad total de escrituras de compraventa inmobiliaria otorgadas en la Ciudad de Buenos Aires.</p>
+                      <p className="text-slate-600 mt-1">Costo de construcción por m² (materiales y mano de obra).</p>
                     </div>
                   </div>
                 </div>
@@ -1988,20 +2064,20 @@ export default function App() {
         {/* ============================================================ */}
         {activeTab === 'asesor' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col h-[500px]">
+            <div className="bg-white rounded-2xl border border-blue-200/80 shadow-xs overflow-hidden flex flex-col h-[500px]">
               {/* Header */}
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="p-4 border-b border-blue-100 flex items-center justify-between bg-blue-50/30">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-950">Asesor Macroeconómico Econoapp</h3>
-                  <span className="text-xs text-slate-500 font-mono">Entrenado en boletines oficiales BNA, BCRA, INDEC y Cámaras</span>
+                  <h3 className="text-sm font-bold text-slate-900">Asesor Macro</h3>
+                  <span className="text-xs text-slate-500 font-mono">Fuentes oficiales BNA, BCB, INDEC, IBGE y Cámaras</span>
                 </div>
-                <span className="text-xs font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-xs font-mono text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded border border-blue-300">
                   13-10-2026
                 </span>
               </div>
 
               {/* Chat Thread */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#fafafa]">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#edf3fa]">
                 {chatMessages.map(m => (
                   <div
                     key={m.id}
@@ -2011,10 +2087,10 @@ export default function App() {
                       {m.sender === 'user' ? 'Vos' : 'Asesor'} · {m.timestamp}
                     </span>
                     <div
-                      className={`p-3.5 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
+                      className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
                         m.sender === 'user'
-                          ? 'bg-slate-900 text-white rounded-tr-none'
-                          : 'bg-white text-slate-900 border border-slate-200/80 rounded-tl-none shadow-2xs'
+                          ? 'bg-[#0f274a] text-blue-100 rounded-tr-none'
+                          : 'bg-white text-slate-900 border border-blue-200/80 rounded-tl-none shadow-xs'
                       }`}
                     >
                       <p className="whitespace-pre-wrap">{m.text}</p>
@@ -2022,62 +2098,62 @@ export default function App() {
                   </div>
                 ))}
                 {isChatLoading && (
-                  <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl w-fit text-xs text-slate-500">
-                    <RefreshCw className="size-3 animate-spin text-slate-900" />
-                    <span>Consultando bases oficiales y cámaras...</span>
+                  <div className="flex items-center gap-2 p-3 bg-white border border-blue-200 rounded-xl w-fit text-xs text-slate-600">
+                    <RefreshCw className="size-3 animate-spin text-blue-700" />
+                    <span>Consultando fuentes...</span>
                   </div>
                 )}
                 <div ref={chatBottomRef} />
               </div>
 
               {/* Suggested Questions */}
-              <div className="p-2 border-t border-slate-100 bg-white flex gap-1.5 overflow-x-auto scrollbar-none">
+              <div className="p-2 border-t border-blue-100 bg-white flex gap-1.5 overflow-x-auto scrollbar-none">
                 <button
                   type="button"
                   onClick={() => handleSendChatMessage('¿A cuánto cotiza hoy el dólar billete y divisa en el BNA?')}
-                  className="h-7 px-2.5 bg-slate-100 hover:bg-slate-200 text-[11px] rounded-lg text-slate-700 whitespace-nowrap"
+                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
                 >
-                  ¿Dólar BNA hoy?
+                  Dólar BNA
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendChatMessage('¿Qué banco paga hoy la mejor tasa de plazo fijo?')}
-                  className="h-7 px-2.5 bg-slate-100 hover:bg-slate-200 text-[11px] rounded-lg text-slate-700 whitespace-nowrap"
+                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
                 >
-                  ¿Mejor tasa de plazo fijo?
+                  Mejor Plazo Fijo
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendChatMessage('¿Cuánto estimó el REM de inflación mensual para septiembre y octubre 2026?')}
-                  className="h-7 px-2.5 bg-slate-100 hover:bg-slate-200 text-[11px] rounded-lg text-slate-700 whitespace-nowrap"
+                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
                 >
-                  ¿Inflación REM BCRA?
+                  Inflación REM
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSendChatMessage('¿Cuánto liquidó el agro esta semana según CIARA-CEC?')}
-                  className="h-7 px-2.5 bg-slate-100 hover:bg-slate-200 text-[11px] rounded-lg text-slate-700 whitespace-nowrap"
+                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
                 >
-                  ¿Liquidación CIARA-CEC?
+                  Agro CIARA-CEC
                 </button>
               </div>
 
               {/* Input */}
               <form
                 onSubmit={e => { e.preventDefault(); handleSendChatMessage(); }}
-                className="p-3 border-t border-slate-200 bg-white flex gap-2"
+                className="p-3 border-t border-blue-200 bg-white flex gap-2"
               >
                 <input
                   type="text"
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
-                  placeholder="Escribí una consulta sobre temas de interés, cotizaciones o tasas..."
-                  className="flex-1 h-10 px-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-slate-900"
+                  placeholder="Consulta rápida sobre variables o cotizaciones..."
+                  className="flex-1 h-10 px-3 border border-blue-200/90 rounded-xl text-xs focus:outline-none focus:border-blue-600 bg-blue-50/20"
                 />
                 <button
                   type="submit"
                   disabled={isChatLoading || !chatInput.trim()}
-                  className="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold disabled:opacity-50 transition-colors"
+                  className="h-10 px-4 bg-[#0f274a] hover:bg-slate-950 text-blue-100 rounded-xl text-xs font-semibold disabled:opacity-50 transition-colors"
                 >
                   Enviar
                 </button>
@@ -2091,34 +2167,34 @@ export default function App() {
         {/* ============================================================ */}
         {isChartModalOpen && activeVar && (
           <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl p-5 sm:p-6 space-y-4">
+            <div className="bg-white rounded-2xl border border-blue-200/90 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl p-5 sm:p-6 space-y-4">
               
               {/* Modal Header */}
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-start justify-between gap-3 pb-3 border-b border-blue-100">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${
                       activeVar.sourceType === 'publica'
-                        ? 'bg-blue-50 border-blue-200 text-blue-700'
-                        : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        ? 'bg-blue-100 border-blue-300 text-blue-900'
+                        : 'bg-sky-100 border-sky-300 text-sky-900'
                     }`}>
-                      {activeVar.source} · {activeVar.sourceType === 'publica' ? 'Pública Oficial' : 'Cámara Sectorial'}
+                      {activeVar.source} · {activeVar.sourceType === 'publica' ? 'Oficial' : 'Cámara'}
                     </span>
-                    <span className="text-[11px] font-mono text-slate-400">
-                      Frecuencia: {activeVar.frequency}
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {activeVar.frequency}
                     </span>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-950 mt-1">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
                     {activeVar.name}
                   </h3>
-                  <div className="text-sm font-mono font-extrabold text-slate-900 mt-0.5">
+                  <div className="text-sm font-mono font-extrabold text-blue-950 mt-0.5">
                     {formatVariableValue(activeVar)}
                   </div>
                 </div>
 
                 <button
                   onClick={() => setIsChartModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-blue-100/60 transition-colors"
                 >
                   <X className="size-5" />
                 </button>
@@ -2126,16 +2202,16 @@ export default function App() {
 
               {/* Range Selector: 30D, 90D, 1Y, 3Y */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-500">Periodo de análisis:</span>
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
+                <span className="text-xs font-medium text-slate-600">Período:</span>
+                <div className="flex items-center gap-1 bg-blue-100/60 p-0.5 rounded-lg border border-blue-200/70">
                   {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
                     <button
                       key={range}
                       onClick={() => setChartRange(range)}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                         chartRange === range
-                          ? 'bg-white text-slate-950 shadow-2xs'
-                          : 'text-slate-500 hover:text-slate-900'
+                          ? 'bg-[#0f274a] text-blue-100 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-950'
                       }`}
                     >
                       {range}
@@ -2147,33 +2223,33 @@ export default function App() {
               {/* KPI Badges */}
               {chartStats && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-[10px] font-medium text-slate-400">Variación {chartRange}</div>
+                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <div className="text-[10px] font-medium text-slate-500">Var {chartRange}</div>
                     <div className="text-xs font-extrabold font-mono mt-0.5">
-                      <span className={chartStats.nominalDiff > 0 ? 'text-emerald-600' : chartStats.nominalDiff < 0 ? 'text-rose-600' : 'text-slate-700'}>
+                      <span className={chartStats.nominalDiff > 0 ? 'text-emerald-700' : chartStats.nominalDiff < 0 ? 'text-rose-700' : 'text-slate-700'}>
                         {chartStats.nominalDiff > 0 ? '+' : ''}{chartStats.percentChange.toFixed(2)}%
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-[10px] font-medium text-slate-400">Inicio ({formatChartDate(chartStats.firstPoint.date)})</div>
+                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <div className="text-[10px] font-medium text-slate-500">Inicio ({formatChartDate(chartStats.firstPoint.date)})</div>
                     <div className="text-xs font-extrabold font-mono text-slate-900 mt-0.5">
-                      {chartStats.initialVal.toLocaleString('es-AR')}
+                      {chartStats.initialVal.toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')}
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-[10px] font-medium text-slate-400">Mínimo en {chartRange}</div>
+                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <div className="text-[10px] font-medium text-slate-500">Mínimo</div>
                     <div className="text-xs font-extrabold font-mono text-slate-900 mt-0.5">
-                      {chartStats.minVal.toLocaleString('es-AR')}
+                      {chartStats.minVal.toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')}
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="text-[10px] font-medium text-slate-400">Máximo en {chartRange}</div>
+                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                    <div className="text-[10px] font-medium text-slate-500">Máximo</div>
                     <div className="text-xs font-extrabold font-mono text-slate-900 mt-0.5">
-                      {chartStats.maxVal.toLocaleString('es-AR')}
+                      {chartStats.maxVal.toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')}
                     </div>
                   </div>
                 </div>
@@ -2183,16 +2259,16 @@ export default function App() {
               <div className="h-64 w-full pt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#bfdbfe" strokeOpacity={0.4} />
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatChartDate}
-                      tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                      tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                       tickLine={false}
-                      axisLine={{ stroke: '#f1f5f9' }}
+                      axisLine={{ stroke: '#bfdbfe' }}
                     />
                     <YAxis
-                      tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                      tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                       tickLine={false}
                       axisLine={false}
                       domain={['auto', 'auto']}
@@ -2200,23 +2276,23 @@ export default function App() {
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#0f172a',
-                        border: 'none',
+                        backgroundColor: '#0a192f',
+                        borderColor: '#1e40af',
                         borderRadius: '8px',
-                        color: '#fff',
+                        color: '#eff6ff',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono'
                       }}
-                      labelStyle={{ color: '#94a3b8' }}
+                      labelStyle={{ color: '#93c5fd' }}
                       labelFormatter={(label) => `Fecha: ${label}`}
-                      formatter={(val: any) => [`${Number(val).toLocaleString('es-AR')} ${activeVar.unit}`, activeVar.name]}
+                      formatter={(val: any) => [`${Number(val).toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')} ${activeVar.unit}`, activeVar.name]}
                     />
                     <Line
                       type="monotone"
                       dataKey="value"
-                      stroke="#0f172a"
+                      stroke="#2563eb"
                       strokeWidth={2.5}
-                      dot={{ r: 2, fill: '#0f172a' }}
+                      dot={{ r: 2, fill: '#38bdf8' }}
                       activeDot={{ r: 5 }}
                     />
                   </LineChart>
@@ -2224,17 +2300,17 @@ export default function App() {
               </div>
 
               {/* Description & Source Link */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <p className="text-xs text-slate-500 leading-relaxed pr-4">
+              <div className="pt-2 border-t border-blue-100 flex items-center justify-between text-xs text-slate-600">
+                <p className="text-xs text-slate-600 leading-relaxed pr-4 font-mono">
                   {activeVar.description}
                 </p>
                 <a
                   href={activeVar.sourceUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="shrink-0 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-medium flex items-center gap-1 transition-colors"
+                  className="shrink-0 px-3 py-1.5 bg-blue-100/70 hover:bg-blue-200/80 text-blue-950 border border-blue-300 rounded-lg font-medium flex items-center gap-1 transition-colors"
                 >
-                  <span>Portal Fuente</span>
+                  <span>Fuente</span>
                   <ExternalLink className="size-3" />
                 </a>
               </div>
@@ -2242,58 +2318,58 @@ export default function App() {
           </div>
         )}
 
-        {/* Minimal Footer */}
-        <footer className="pt-8 pb-4 border-t border-slate-200/60 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Minimal Sober Blue Footer */}
+        <footer className="pt-8 pb-4 border-t border-blue-200/60 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <EconoLogo
               country={selectedCountry}
               onSelectCountry={handleSelectCountry}
             />
           </div>
-          <div className="flex items-center gap-3 text-slate-400 text-[11px] font-mono flex-wrap">
+          <div className="flex items-center gap-2 text-slate-500 text-[11px] font-mono flex-wrap">
             {selectedCountry === 'BR' ? (
               <>
-                <span>BCB</span>
+                <span className="text-blue-800 font-semibold">BCB</span>
                 <span>·</span>
-                <span>IBGE</span>
+                <span className="text-blue-800 font-semibold">IBGE</span>
                 <span>·</span>
-                <span>B3</span>
+                <span className="text-blue-800 font-semibold">B3</span>
                 <span>·</span>
-                <span>FGV IBRE</span>
+                <span className="text-blue-800 font-semibold">FGV</span>
                 <span>·</span>
-                <span>Tesouro</span>
+                <span className="text-blue-800 font-semibold">Tesouro</span>
                 <span>·</span>
-                <span>ANFAVEA</span>
+                <span className="text-blue-800 font-semibold">ANFAVEA</span>
                 <span>·</span>
-                <span>Atualizado em 13-10-2026</span>
+                <span>13-10-2026</span>
               </>
             ) : (
               <>
-                <span>BNA</span>
+                <span className="text-blue-800 font-semibold">BNA</span>
                 <span>·</span>
-                <span>BCRA</span>
+                <span className="text-blue-800 font-semibold">BCRA</span>
                 <span>·</span>
-                <span>INDEC</span>
+                <span className="text-blue-800 font-semibold">INDEC</span>
                 <span>·</span>
-                <span>CIARA-CEC</span>
+                <span className="text-blue-800 font-semibold">CIARA-CEC</span>
                 <span>·</span>
-                <span>ADEFA</span>
+                <span className="text-blue-800 font-semibold">ADEFA</span>
                 <span>·</span>
-                <span>BYMA</span>
+                <span className="text-blue-800 font-semibold">BYMA</span>
                 <span>·</span>
-                <span>Actualizado al 13-10-2026</span>
+                <span>13-10-2026</span>
               </>
             )}
           </div>
         </footer>
       </main>
 
-      {/* Mobile Fixed Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 grid grid-cols-5 items-center h-16 px-1 shadow-xs">
+      {/* Mobile Fixed Bottom Tab Bar in Sober Blue Palette */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#edf3fa]/95 backdrop-blur-md border-t border-blue-200/90 grid grid-cols-5 items-center h-16 px-1 shadow-xs">
         <button
           onClick={() => setActiveTab('temas')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'temas' ? 'text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-700'
+            activeTab === 'temas' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Layers className="size-4" />
@@ -2303,7 +2379,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('cotizaciones')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'cotizaciones' ? 'text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-700'
+            activeTab === 'cotizaciones' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <span className="text-base font-mono font-bold leading-none">$</span>
@@ -2313,7 +2389,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('plazo_fijo')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'plazo_fijo' ? 'text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-700'
+            activeTab === 'plazo_fijo' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Landmark className="size-4" />
@@ -2323,7 +2399,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('tendencias')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'tendencias' ? 'text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-700'
+            activeTab === 'tendencias' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <TrendingUp className="size-4" />
@@ -2333,7 +2409,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('asesor')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'asesor' ? 'text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-700'
+            activeTab === 'asesor' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Sparkles className="size-4" />
