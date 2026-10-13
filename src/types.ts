@@ -6,7 +6,7 @@ export interface HistoricalDataPoint {
 export type VariableCategory = 'FINANCIAL_RATES' | 'MONETARY_EXCHANGE' | 'MACRO_INFLATION_FISCAL' | 'SECTORS_SALARIES_SOCIAL';
 
 export interface EconomicVariable {
-  id: string; // e.g. "tasa_politica_monetaria"
+  id: string; // e.g. "rem_inflacion_esperada", "bna_dolar_billete"
   name: string;
   category: VariableCategory;
   value: number;

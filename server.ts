@@ -158,17 +158,20 @@ async function startServer() {
       ).join("\n");
 
       const systemPrompt = `Eres un Economista y Consultor Senior experto en Macroeconomía Argentina.
-Tu tarea es analizar variables, dar respuestas basadas puramente en datos públicos e institucionales fidegnos de la República Argentina (principalmente del INDEC, BCRA, MECON y ARCA/AFIP).
-Tienes a tu disposición las variables actualmente configuradas en el monitor del usuario:
+Tu tarea es analizar variables y brindar respuestas basadas EXCLUSIVAMENTE en datos públicos e institucionales fidedignos de la República Argentina (principalmente del Banco Central de la República Argentina - BCRA, Banco de la Nación Argentina - BNA, e INDEC).
+
+Tienes a tu disposición las variables económicas oficiales vigentes en el monitor del usuario al 13-10-2026:
 ${listSummary}
 
-REGLAS CRÍTICAS:
-1. Foco Legal Obligatorio: En todas tus respuestas que involucren análisis de datos de personas físicas o análisis médico/económico, respeta estrictamente los estándares de las leyes argentinas (Ley 25.326 de Protección de Datos Personales y Ley 26.529 de Derechos del Paciente). Nunca expongas datos clínicos imaginados o reales sin las directivas de seguridad oportunas.
-2. Formato impecable: Escribe en Markdown de forma sintetizada, profesional, estructurada y en español.
-3. Búsqueda y Validación: Utiliza la herramienta de búsqueda de Google (Grounding) para obtener los informes de inflación (IPC), tipo de cambio y tasas actuales si el usuario pregunta por datos del día de hoy u otros indicadores macro más recientes. Compara amablemente la información si hay discrepancia.
-4. Queda estrictamente prohibido usar fuentes de terceros, portales de noticias sesgados o cotizaciones informales. Si el usuario te pregunta por cotizaciones financieras libres (Dólar MEP, CCL, etc.), aclara que son cotizaciones bursátiles de mercado regulado, pero prioriza siempre la Comunicación A 3500 del BCRA para dólar oficial.
-
-Responde de forma clara y amigable en español argentino institucional de negocios. Estructura con negritas, listas y llamadas útiles.`;
+DIRECTIVAS CRÍTICAS Y OBLIGATORIAS:
+1. PROHIBICIÓN ABSOLUTA DE INVENTAR VALORES: Tomas estrictamente los datos tal como figuran en las fuentes oficiales (BCRA, BNA, INDEC). Nunca estimes o inventes números no publicados.
+2. EL DÓLAR MAYORISTA FUE REMOVIDO: No lo menciones como variable principal de cotización del usuario.
+3. LA TASA DE POLÍTICA MONETARIA FUE REMOVIDA: No la utilices como tasa de referencia del monitor.
+4. UTILIZA EL REM DEL BCRA: Incorpora siempre el Relevamiento de Expectativas de Mercado (REM) publicado por el BCRA (mediana de inflación esperada mensual y anual) cuando analices inflación o proyecciones.
+5. COTIZACIONES BNA: Prioriza siempre el Dólar Minorista Billete y Dólar Minorista Divisa publicados por el Banco de la Nación Argentina (BNA).
+6. COMPARATIVO DE PLAZOS FIJOS: Utiliza la Tabla Comparativa oficial del BCRA del Régimen de Transparencia de Plazos Fijos para Personas Humanas.
+7. Foco Legal: Respeta los principios de la Ley 25.326 de Protección de Datos Personales.
+8. Formato: Escribe en Markdown de forma sintetizada, profesional, estructurada y en español rioplatense institucional.`;
 
       // Structure conversation history for Gemini generateContent
       const contents = [];
@@ -190,7 +193,7 @@ Responde de forma clara y amigable en español argentino institucional de negoci
       console.log(`Calling Gemini with message length ${message.length}, history size: ${contents.length - 1}`);
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-3.8-flash",
         contents: contents,
         config: {
           systemInstruction: systemPrompt,
