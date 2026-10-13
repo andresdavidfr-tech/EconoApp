@@ -3,9 +3,10 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { ARGENTINA_ECONOMIC_VARIABLES, ECONOMIC_TOPICS } from "./src/data";
+import { BRAZIL_ECONOMIC_VARIABLES, BRAZIL_ECONOMIC_TOPICS } from "./src/brazilData";
 import { syncVariablesToCurrentDate } from "./src/dailySync";
 import { EconomicVariable } from "./src/types";
-import { computeBankRates } from "./src/fixedTermData";
+import { computeBankRates, computeBrazilBankRates } from "./src/fixedTermData";
 
 const PORT = 3000;
 
@@ -74,7 +75,7 @@ async function startServer() {
       status: "up_to_date",
       totalVariables: variablesStore.length,
       frequency: "diaria",
-      sources: ["BNA", "BCRA", "INDEC", "MECON", "ARCA"]
+      sources: ["BNA", "BCRA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
     });
   });
 
@@ -93,8 +94,18 @@ async function startServer() {
   // API 1d: List comparative electronic personal fixed-term deposit rates of main banks
   app.get("/api/plazos-fijos", (req, res) => {
     const today = new Date().toISOString().split("T")[0];
+    const country = (req.query.country as string)?.toUpperCase();
+    if (country === 'BR') {
+      return res.json({
+        lastUpdated: today,
+        country: 'BR',
+        source: "Banco Central do Brasil e B3 (Renda Fixa & CDBs Bancários)",
+        rates: computeBrazilBankRates(today)
+      });
+    }
     res.json({
       lastUpdated: today,
+      country: 'AR',
       source: "BCRA (Tabla Comparativa de Tasas de Plazo Fijo en Pesos para Personas Humanas)",
       rates: computeBankRates(today)
     });
@@ -102,12 +113,20 @@ async function startServer() {
 
   // API 2: List all economic variables (always ensures daily sync is up-to-date)
   app.get("/api/variables", (req, res) => {
+    const country = (req.query.country as string)?.toUpperCase();
+    if (country === 'BR') {
+      return res.json(BRAZIL_ECONOMIC_VARIABLES);
+    }
     runDailyAutoSync();
     res.json(variablesStore);
   });
 
   // API 2b: List curated economic topics with key public & chamber sources
   app.get("/api/topics", (req, res) => {
+    const country = (req.query.country as string)?.toUpperCase();
+    if (country === 'BR') {
+      return res.json(BRAZIL_ECONOMIC_TOPICS);
+    }
     res.json(ECONOMIC_TOPICS);
   });
 

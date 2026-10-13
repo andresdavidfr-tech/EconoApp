@@ -22,6 +22,8 @@ export interface TopicSource {
   url: string;
 }
 
+export type CountryCode = 'AR' | 'BR';
+
 export interface EconomicTopic {
   id: TopicId;
   name: string;
@@ -33,6 +35,7 @@ export interface EconomicTopic {
   imageUrl: string;
   imageAlt?: string;
   visualSummary?: string;
+  country?: CountryCode;
   sources: TopicSource[];
   variableIds: string[];
 }
@@ -43,10 +46,11 @@ export interface EconomicVariable {
   category: VariableCategory;
   topicId: TopicId;
   sourceType: 'publica' | 'camara';
+  country?: CountryCode;
   value: number;
-  unit: string; // e.g. "%", "ARS", "USD (M)", "Índice"
+  unit: string; // e.g. "%", "ARS", "BRL", "USD (M)", "Índice"
   frequency: 'Diaria' | 'Mensual' | 'Trimestral';
-  source: string; // e.g. "BCRA", "INDEC", "MECON", "ARCA", "ADEFA", "CIARA-CEC"
+  source: string; // e.g. "BCRA", "INDEC", "BCB", "IBGE", "B3", "FGV"
   sourceUrl: string;
   description: string;
   lastUpdated: string; // YYYY-MM-DD

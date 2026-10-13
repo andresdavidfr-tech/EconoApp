@@ -10,7 +10,7 @@ interface Milestone {
  * Para frecuencias diarias: genera datos día por día para los últimos 90 días (30D y 90D en alta resolución)
  * e intercala los hitos de 1 y 3 años para que los gráficos de 1Y y 3Y muestren la tendencia macroeconómica real.
  */
-function createHistoricalSeries(
+export function createHistoricalSeries(
   milestones: Milestone[],
   isDaily: boolean = true,
   precision: number = 2

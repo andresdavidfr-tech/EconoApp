@@ -32,6 +32,7 @@ import {
   Tooltip
 } from 'recharts';
 import {
+  CountryCode,
   EconomicVariable,
   ChatMessage,
   BankFixedTermRate,
@@ -39,66 +40,123 @@ import {
   EconomicTopic
 } from './types';
 import { ARGENTINA_ECONOMIC_VARIABLES, ECONOMIC_TOPICS } from './data';
-import { computeBankRates } from './fixedTermData';
+import {
+  BRAZIL_ECONOMIC_VARIABLES,
+  BRAZIL_ECONOMIC_TOPICS,
+  BRAZIL_OFFICIAL_QUOTES
+} from './brazilData';
+import { computeBankRates, computeBrazilBankRates } from './fixedTermData';
+import { ArgentinaFlag, BrazilFlag } from './components/FlagIcons';
 
 type Tab = 'temas' | 'cotizaciones' | 'plazo_fijo' | 'tendencias' | 'fuentes' | 'asesor';
 
 // ============================================================================
-// Modern Logo Component
+// Modern Logo Component with Country Flag Display & Switcher
 // ============================================================================
-function EconoLogo({ onClick }: { onClick?: () => void }) {
+function EconoLogo({
+  onClick,
+  country,
+  onSelectCountry
+}: {
+  onClick?: () => void;
+  country: CountryCode;
+  onSelectCountry: (c: CountryCode) => void;
+}) {
   return (
-    <div
-      onClick={onClick}
-      className="flex items-center gap-2.5 cursor-pointer group select-none"
-      title="Econoapp - Monitor Económico Argentino"
-    >
-      <div className="relative flex items-center justify-center shrink-0">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-[1px] shadow-xs group-hover:scale-105 transition-transform duration-200">
-          <div className="w-full h-full rounded-[11px] bg-slate-950 flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/25 via-indigo-500/10 to-teal-400/20 pointer-events-none" />
-            <svg
-              className="w-5 h-5 relative z-10"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Modern geometric E ligature */}
-              <path
-                d="M4 6C4 4.89543 4.89543 4 6 4H18C19.1046 4 20 4.89543 20 6V7C20 7.55228 19.5523 8 19 8H8.5C7.67157 8 7 8.67157 7 9.5V11H16C16.5523 11 17 11.4477 17 12V12.5C17 13.0523 16.5523 13.5 16 13.5H7V15C7 15.8284 7.67157 16.5 8.5 16.5H19C19.5523 16.5 20 16.9477 20 17.5V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6Z"
-                fill="url(#econo-grad-main)"
-              />
-              {/* Ascending financial vector and pulse dot */}
-              <path
-                d="M13 3L20 3M20 3L20 10M20 3L11 12"
-                stroke="#10b981"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="20" cy="3" r="1.5" fill="#34d399" />
-              <defs>
-                <linearGradient id="econo-grad-main" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#f8fafc" />
-                  <stop offset="1" stopColor="#cbd5e1" />
-                </linearGradient>
-              </defs>
-            </svg>
+    <div className="flex items-center gap-3 select-none">
+      <div
+        onClick={onClick}
+        className="flex items-center gap-2.5 cursor-pointer group"
+        title="Econoapp - Ir a Temas de Interés"
+      >
+        <div className="relative flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-[1px] shadow-xs group-hover:scale-105 transition-transform duration-200">
+            <div className="w-full h-full rounded-[11px] bg-slate-950 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/25 via-indigo-500/10 to-teal-400/20 pointer-events-none" />
+              <svg
+                className="w-5 h-5 relative z-10"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Modern geometric E ligature */}
+                <path
+                  d="M4 6C4 4.89543 4.89543 4 6 4H18C19.1046 4 20 4.89543 20 6V7C20 7.55228 19.5523 8 19 8H8.5C7.67157 8 7 8.67157 7 9.5V11H16C16.5523 11 17 11.4477 17 12V12.5C17 13.0523 16.5523 13.5 16 13.5H7V15C7 15.8284 7.67157 16.5 8.5 16.5H19C19.5523 16.5 20 16.9477 20 17.5V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6Z"
+                  fill="url(#econo-grad-main)"
+                />
+                {/* Ascending financial vector and pulse dot */}
+                <path
+                  d="M13 3L20 3M20 3L20 10M20 3L11 12"
+                  stroke="#10b981"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx="20" cy="3" r="1.5" fill="#34d399" />
+                <defs>
+                  <linearGradient id="econo-grad-main" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#f8fafc" />
+                    <stop offset="1" stopColor="#cbd5e1" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex flex-col">
-        <div className="flex items-center gap-1.5 leading-none">
-          <span className="text-[17px] font-black tracking-tight text-slate-950 font-sans">
-            Econo<span className="text-emerald-600 font-extrabold">app</span>
-          </span>
-          <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-md">
-            ARG
+        <div className="flex flex-col">
+          <div className="flex items-center gap-1.5 leading-none">
+            <span className="text-[17px] font-black tracking-tight text-slate-950 font-sans">
+              Econo<span className="text-emerald-600 font-extrabold">app</span>
+            </span>
+            {/* Country flag displayed on the right instead of text 'ARG' */}
+            <span className="inline-flex items-center ml-0.5" title={country === 'AR' ? 'Mercado Argentino' : 'Mercado Brasileiro'}>
+              {country === 'AR' ? (
+                <ArgentinaFlag className="w-5 h-3.5 shadow-2xs" />
+              ) : (
+                <BrazilFlag className="w-5 h-3.5 shadow-2xs" />
+              )}
+            </span>
+          </div>
+          <span className="text-[10px] font-medium text-slate-400 tracking-tight mt-0.5 whitespace-nowrap">
+            {country === 'BR' ? 'Variáveis Oficiais & Câmaras (Brasil)' : 'Variables Oficiales & Cámaras (Argentina)'}
           </span>
         </div>
-        <span className="text-[10px] font-medium text-slate-400 tracking-tight mt-0.5">
-          Variables Oficiales & Cámaras
-        </span>
+      </div>
+
+      {/* Flag Country Selector: Argentina 🇦🇷 and Brasil 🇧🇷 */}
+      <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shadow-2xs">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectCountry('AR');
+          }}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-xs ${
+            country === 'AR'
+              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-slate-200'
+              : 'text-slate-500 hover:text-slate-800 opacity-60 hover:opacity-100'
+          }`}
+          title="Versión Mercado Argentino (BCRA, BNA, INDEC)"
+        >
+          <ArgentinaFlag className="w-4.5 h-3" />
+          <span className="hidden sm:inline text-[10px] font-bold">ARG</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectCountry('BR');
+          }}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-xs ${
+            country === 'BR'
+              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-emerald-500/30'
+              : 'text-slate-500 hover:text-slate-800 opacity-60 hover:opacity-100'
+          }`}
+          title="Versão Mercado Brasileiro (BCB, IBGE, B3, FGV)"
+        >
+          <BrazilFlag className="w-4.5 h-3" />
+          <span className="hidden sm:inline text-[10px] font-bold">BRA</span>
+        </button>
       </div>
     </div>
   );
@@ -163,10 +221,58 @@ function MiniSparkline({
 }
 
 export default function App() {
-  // --- Data State ---
-  const [variables, setVariables] = useState<EconomicVariable[]>(ARGENTINA_ECONOMIC_VARIABLES);
-  const [bankRates, setBankRates] = useState<BankFixedTermRate[]>(computeBankRates('2026-10-13'));
-  const [topics] = useState<EconomicTopic[]>(ECONOMIC_TOPICS);
+  // --- Country Selection State (defaults to AR or persisted) ---
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
+    try {
+      const saved = localStorage.getItem('econo_country');
+      return (saved === 'BR' || saved === 'AR') ? (saved as CountryCode) : 'AR';
+    } catch {
+      return 'AR';
+    }
+  });
+
+  // --- Data State (dynamically initialized by country) ---
+  const [variables, setVariables] = useState<EconomicVariable[]>(() =>
+    selectedCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES
+  );
+  const [bankRates, setBankRates] = useState<BankFixedTermRate[]>(() =>
+    selectedCountry === 'BR' ? computeBrazilBankRates('2026-10-13') : computeBankRates('2026-10-13')
+  );
+  const [topics, setTopics] = useState<EconomicTopic[]>(() =>
+    selectedCountry === 'BR' ? BRAZIL_ECONOMIC_TOPICS : ECONOMIC_TOPICS
+  );
+
+  // Switch between Argentina and Brazil
+  const handleSelectCountry = (newCountry: CountryCode) => {
+    if (newCountry === selectedCountry) return;
+    setSelectedCountry(newCountry);
+    try {
+      localStorage.setItem('econo_country', newCountry);
+    } catch {}
+
+    const newVars = newCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES;
+    const newTopicsList = newCountry === 'BR' ? BRAZIL_ECONOMIC_TOPICS : ECONOMIC_TOPICS;
+    const newRates = newCountry === 'BR' ? computeBrazilBankRates('2026-10-13') : computeBankRates('2026-10-13');
+
+    setVariables(newVars);
+    setTopics(newTopicsList);
+    setBankRates(newRates);
+    setSelectedTopicFilter('ALL');
+    setSelectedVarId(newVars[0].id);
+
+    // Adjust default simulator capital (R$ 10.000 vs $ 100.000 ARS)
+    if (newCountry === 'BR') {
+      setSimAmount(10000);
+    } else {
+      setSimAmount(100000);
+    }
+
+    triggerToast(
+      newCountry === 'BR'
+        ? '🇧🇷 Mercado Brasileiro Carregado (BCB, IBGE, B3, FGV)'
+        : '🇦🇷 Mercado Argentino Cargado (BCRA, BNA, INDEC)'
+    );
+  };
 
   // Tab State - THE USER'S FIRST EXPERIENCE IS THEIR TOPICS OF INTEREST
   const [activeTab, setActiveTab] = useState<Tab>('temas');
@@ -197,12 +303,14 @@ export default function App() {
   const [isCustomizingTopics, setIsCustomizingTopics] = useState<boolean>(false);
 
   // Active variable for chart inspection
-  const [selectedVarId, setSelectedVarId] = useState<string>('bna_dolar_billete');
+  const [selectedVarId, setSelectedVarId] = useState<string>(() =>
+    selectedCountry === 'BR' ? 'bcb_dolar_ptax_venda' : 'bna_dolar_billete'
+  );
   const [chartRange, setChartRange] = useState<'30D' | '90D' | '1Y' | '3Y'>('90D');
   const [isChartModalOpen, setIsChartModalOpen] = useState<boolean>(false);
 
   // Plazo Fijo Simulator State
-  const [simAmount, setSimAmount] = useState<number>(100000);
+  const [simAmount, setSimAmount] = useState<number>(() => (selectedCountry === 'BR' ? 10000 : 100000));
   const [simDays, setSimDays] = useState<number>(30);
   const [bankTypeFilter, setBankTypeFilter] = useState<'all' | 'publico' | 'privado' | 'non_clients'>('all');
 
@@ -376,7 +484,15 @@ export default function App() {
   };
 
   // Currency & numbers formatting
-  const formatArs = (val: number, decimals = 2) => {
+  const formatCurrency = (val: number, decimals = 2) => {
+    if (selectedCountry === 'BR') {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(val);
+    }
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
@@ -385,31 +501,43 @@ export default function App() {
     }).format(val);
   };
 
+  const formatArs = formatCurrency;
+
   const formatRate = (val: number) => {
     return `${val.toFixed(2)}%`;
   };
 
   const formatVariableValue = (variable: EconomicVariable) => {
+    const locale = selectedCountry === 'BR' ? 'pt-BR' : 'es-AR';
     if (variable.unit.includes('ARS/USD')) {
-      return formatArs(variable.value, 2);
+      return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(variable.value);
+    }
+    if (variable.unit.includes('BRL/USD') || variable.unit.includes('BRL/EUR')) {
+      return `R$ ${variable.value.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`;
+    }
+    if (variable.unit === 'BRL') {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(variable.value);
+    }
+    if (variable.unit.includes('Millones BRL')) {
+      return `R$ ${(variable.value / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} Tri`;
     }
     if (variable.unit.startsWith('%') || variable.unit.includes('%')) {
       const prefix = variable.value > 0 && variable.unit.includes('interanual') ? '+' : '';
       return `${prefix}${variable.value.toFixed(2)}%`;
     }
     if (variable.unit.includes('USD')) {
-      return `USD ${variable.value.toLocaleString('es-AR')} M`;
+      return `USD ${variable.value.toLocaleString(locale)} M`;
     }
     if (variable.unit === 'ARS') {
-      return formatArs(variable.value, 0);
+      return formatCurrency(variable.value, 0);
     }
     if (variable.unit.includes('Millones de ARS')) {
       return `$${(variable.value / 1000000).toLocaleString('es-AR', { maximumFractionDigits: 2 })} B`;
     }
-    if (variable.unit.includes('Unidades') || variable.unit.includes('Actos') || variable.unit.includes('GWh')) {
-      return `${variable.value.toLocaleString('es-AR')} ${variable.unit.split('/')[0]}`;
+    if (variable.unit.includes('Unidades') || variable.unit.includes('Actos') || variable.unit.includes('GWh') || variable.unit.includes('MW')) {
+      return `${variable.value.toLocaleString(locale)} ${variable.unit.split('/')[0]}`;
     }
-    return `${variable.value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${variable.unit}`;
+    return `${variable.value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${variable.unit}`;
   };
 
   const calculateBankReturn = (tna: number, amount: number, days: number) => {
@@ -506,12 +634,12 @@ export default function App() {
     return true;
   });
 
-  const bnaBank = bankRates.find(b => b.id === 'banco_nacion');
+  const bnaBank = bankRates.find(b => b.id === 'banco_nacion') || bankRates.find(b => b.type === 'publico') || bankRates[0];
   const topBank = bankRates[0];
 
   // Specific variables for quick reference
-  const bnaBillete = variables.find(v => v.id === 'bna_dolar_billete');
-  const bnaDivisa = variables.find(v => v.id === 'bna_dolar_divisa');
+  const bnaBillete = variables.find(v => v.id === 'bna_dolar_billete') || variables.find(v => v.id === 'bcb_dolar_ptax_venda');
+  const bnaDivisa = variables.find(v => v.id === 'bna_dolar_divisa') || variables.find(v => v.id === 'bcb_dolar_turismo');
 
   // Filtered Topics for the user
   const displayedTopics = useMemo(() => {
@@ -538,8 +666,12 @@ export default function App() {
       <header className="sticky top-0 z-30 bg-[#fafafa]/90 backdrop-blur-md border-b border-slate-200/60">
         <div className="max-w-5xl mx-auto px-4 h-15 flex items-center justify-between gap-6">
           
-          {/* Zone 1: Modern Econoapp Logo */}
-          <EconoLogo onClick={() => setActiveTab('temas')} />
+          {/* Zone 1: Modern Econoapp Logo with Country Flag and Switcher */}
+          <EconoLogo
+            onClick={() => setActiveTab('temas')}
+            country={selectedCountry}
+            onSelectCountry={handleSelectCountry}
+          />
 
           {/* Zone 2: Navigation Links (Clean single-line text) */}
           <nav className="hidden md:flex items-center gap-5 text-xs font-medium text-slate-600">
@@ -552,7 +684,7 @@ export default function App() {
               }`}
             >
               <Layers className="size-3.5" />
-              <span>Temas de Interés</span>
+              <span>{selectedCountry === 'BR' ? 'Temas de Interesse' : 'Temas de Interés'}</span>
             </button>
             <button
               onClick={() => setActiveTab('cotizaciones')}
@@ -560,7 +692,7 @@ export default function App() {
                 activeTab === 'cotizaciones' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
               }`}
             >
-              Cotizaciones BNA
+              {selectedCountry === 'BR' ? 'Cotações BCB' : 'Cotizaciones BNA'}
             </button>
             <button
               onClick={() => setActiveTab('plazo_fijo')}
@@ -568,7 +700,7 @@ export default function App() {
                 activeTab === 'plazo_fijo' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
               }`}
             >
-              Plazo Fijo
+              {selectedCountry === 'BR' ? 'Renda Fixa CDB' : 'Plazo Fijo'}
             </button>
             <button
               onClick={() => setActiveTab('tendencias')}
@@ -576,7 +708,7 @@ export default function App() {
                 activeTab === 'tendencias' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
               }`}
             >
-              Tendencias
+              {selectedCountry === 'BR' ? 'Tendências' : 'Tendencias'}
             </button>
             <button
               onClick={() => setActiveTab('fuentes')}
@@ -584,7 +716,7 @@ export default function App() {
                 activeTab === 'fuentes' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
               }`}
             >
-              Fuentes & Cámaras
+              {selectedCountry === 'BR' ? 'Fontes & Câmaras' : 'Fuentes & Cámaras'}
             </button>
             <button
               onClick={() => setActiveTab('asesor')}
@@ -592,7 +724,7 @@ export default function App() {
                 activeTab === 'asesor' ? 'text-slate-950 font-semibold' : 'hover:text-slate-900'
               }`}
             >
-              Asesor IA
+              {selectedCountry === 'BR' ? 'Consultor IA' : 'Asesor IA'}
             </button>
           </nav>
 
@@ -682,13 +814,19 @@ export default function App() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 font-semibold tracking-wide">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>DATO PURO Y TRANSPARENTE · 13-10-2026</span>
+                    <span>
+                      {selectedCountry === 'BR'
+                        ? 'DADO PURO E TRANSPARENTE · BRASIL · 13-10-2026'
+                        : 'DATO PURO Y TRANSPARENTE · ARGENTINA · 13-10-2026'}
+                    </span>
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
-                    Temas de Interés Económico
+                    {selectedCountry === 'BR' ? 'Temas de Interesse Econômico' : 'Temas de Interés Económico'}
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-                    Monitoreo visual y directo de fuentes primarias (BCRA, INDEC, BNA, BYMA, ADEFA, CAC, CAME). Sin opiniones periodísticas, sin sesgos ideológicos y sin la complejidad de los boletines oficiales.
+                    {selectedCountry === 'BR'
+                      ? 'Monitoramento visual e direto de fontes primárias oficiais (BCB, IBGE, B3, FGV IBRE, Tesouro Nacional, ANFAVEA, CNC, ABRAS, DIEESE). Sem opiniões jornalísticas, sem vieses ideológicos e sem a complexidade de portais governamentais.'
+                      : 'Monitoreo visual y directo de fuentes primarias (BCRA, INDEC, BNA, BYMA, ADEFA, CAC, CAME). Sin opiniones periodísticas, sin sesgos ideológicos y sin la complejidad de los boletines oficiales.'}
                   </p>
                 </div>
 
@@ -698,7 +836,11 @@ export default function App() {
                     className="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
                   >
                     <SlidersHorizontal className="size-3.5 text-slate-600" />
-                    <span>{isCustomizingTopics ? 'Cerrar Ajustes' : 'Personalizar Temas'}</span>
+                    <span>
+                      {isCustomizingTopics
+                        ? (selectedCountry === 'BR' ? 'Fechar Ajustes' : 'Cerrar Ajustes')
+                        : (selectedCountry === 'BR' ? 'Personalizar Temas' : 'Personalizar Temas')}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1025,80 +1167,183 @@ export default function App() {
         )}
 
         {/* ============================================================ */}
-        {/* TAB 2: COTIZACIONES MINORISTAS BNA */}
+        {/* ============================================================ */}
+        {/* TAB 2: COTIZACIONES / COTAÇÕES */}
         {/* ============================================================ */}
         {activeTab === 'cotizaciones' && (
           <div className="space-y-6">
             
-            {/* 2 Primary BNA Cards: Clean, bold typography */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* DÓLAR BILLETE BNA */}
-              {bnaBillete && (
-                <div
-                  onClick={() => openVariableInspector(bnaBillete.id)}
-                  className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
-                >
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                    <span className="font-semibold text-slate-800">Dólar Minorista Billete</span>
-                    <span className="font-mono text-slate-400">BNA · Ventanilla</span>
+            {selectedCountry === 'BR' ? (
+              /* COTAÇÕES OFICIAIS BRASIL (BCB PTAX & ABRACAM) */
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* DÓLAR COMERCIAL PTAX VENDA */}
+                  <div
+                    onClick={() => openVariableInspector('bcb_dolar_ptax_venda')}
+                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                      <span className="font-semibold text-slate-800">Dólar Comercial PTAX (Venda)</span>
+                      <span className="font-mono text-slate-400">BCB · Oficial</span>
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-3 my-2">
+                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
+                        R$ 5,420
+                      </span>
+                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
+                        <ArrowDownRight className="size-3.5" /> -0.15%
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
+                      Cotação oficial de venda apurada pelo Banco Central do Brasil através da média das consultas do sistema PTAX. Compra: R$ 5,414 | Venda: R$ 5,420 ao corte de 13-10-2026.
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>Ajuste: 13-10-2026</span>
+                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
+                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-baseline justify-between gap-3 my-2">
-                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                      {formatArs(bnaBillete.value)}
-                    </span>
-                    <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
-                      <ArrowUpRight className="size-3.5" /> +0.06%
-                    </span>
-                  </div>
+                  {/* DÓLAR TURISMO PAPEL MOEDA */}
+                  <div
+                    onClick={() => openVariableInspector('bcb_dolar_turismo')}
+                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                      <span className="font-semibold text-slate-800">Dólar Turismo Papel Moeda</span>
+                      <span className="font-mono text-slate-400">ABRACAM · Espécie</span>
+                    </div>
 
-                  <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                    Cotización oficial de venta en ventanilla en sucursales del Banco Nación. Base de cálculo impositiva para turismo y consumos. Compra: $1.485,00 | Venta: $1.535,00 al 13-10-2026.
-                  </p>
+                    <div className="flex items-baseline justify-between gap-3 my-2">
+                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
+                        R$ 5,640
+                      </span>
+                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
+                        <ArrowDownRight className="size-3.5" /> -0.10%
+                      </span>
+                    </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                    <span>Ajuste: 13-10-2026</span>
-                    <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
-                      Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
-                    </span>
+                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
+                      Cotação média de balcão para compra e venda de papel-moeda físico nas instituições e casas de câmbio associadas à ABRACAM. Compra: R$ 5,480 | Venda: R$ 5,640.
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>Ajuste: 13-10-2026</span>
+                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
+                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                      </span>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* DÓLAR DIVISA BNA */}
-              {bnaDivisa && (
-                <div
-                  onClick={() => openVariableInspector(bnaDivisa.id)}
-                  className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
-                >
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                    <span className="font-semibold text-slate-800">Dólar Minorista Divisa</span>
-                    <span className="font-mono text-slate-400">BNA · Transferencia</span>
+                {/* Grid de Outras Cotações Oficiais (Euro, Libra, Reservas, Ouro) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div
+                    onClick={() => openVariableInspector('bcb_euro_ptax')}
+                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer shadow-2xs"
+                  >
+                    <span className="text-[11px] text-slate-400 block font-mono">Euro PTAX (BCB)</span>
+                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 5,910</span>
+                    <span className="text-[10px] text-emerald-600 font-mono">+0.22% hoje</span>
                   </div>
-
-                  <div className="flex items-baseline justify-between gap-3 my-2">
-                    <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                      {formatArs(bnaDivisa.value)}
-                    </span>
-                    <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
-                      <ArrowUpRight className="size-3.5" /> +0.05%
-                    </span>
+                  <div
+                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs"
+                  >
+                    <span className="text-[11px] text-slate-400 block font-mono">Libra Esterlina (BCB)</span>
+                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 7,122</span>
+                    <span className="text-[10px] text-emerald-600 font-mono">+0.18% hoje</span>
                   </div>
-
-                  <p className="text-xs text-slate-500 leading-relaxed mt-2">
-                    Cotización para transferencias y operaciones electrónicas bancarias reguladas por el Banco Nación. Compra: $1.508,00 | Venta: $1.517,00 al 13-10-2026.
-                  </p>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                    <span>Ajuste: 13-10-2026</span>
-                    <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
-                      Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
-                    </span>
+                  <div
+                    onClick={() => openVariableInspector('bcb_reservas_internacionais')}
+                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer shadow-2xs"
+                  >
+                    <span className="text-[11px] text-slate-400 block font-mono">Reservas BCB</span>
+                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">US$ 355,4 Bi</span>
+                    <span className="text-[10px] text-slate-500 font-mono">Líquidas</span>
+                  </div>
+                  <div
+                    className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs"
+                  >
+                    <span className="text-[11px] text-slate-400 block font-mono">Ouro 250g (B3)</span>
+                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 478,50</span>
+                    <span className="text-[10px] text-emerald-600 font-mono">Por grama</span>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              /* COTIZACIONES BNA ARGENTINA */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* DÓLAR BILLETE BNA */}
+                {bnaBillete && (
+                  <div
+                    onClick={() => openVariableInspector(bnaBillete.id)}
+                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                      <span className="font-semibold text-slate-800">Dólar Minorista Billete</span>
+                      <span className="font-mono text-slate-400">BNA · Ventanilla</span>
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-3 my-2">
+                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
+                        {formatArs(bnaBillete.value)}
+                      </span>
+                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
+                        <ArrowUpRight className="size-3.5" /> +0.06%
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
+                      Cotización oficial de venta en ventanilla en sucursales del Banco Nación. Base de cálculo impositiva para turismo y consumos. Compra: $1.485,00 | Venta: $1.535,00 al 13-10-2026.
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>Ajuste: 13-10-2026</span>
+                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
+                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* DÓLAR DIVISA BNA */}
+                {bnaDivisa && (
+                  <div
+                    onClick={() => openVariableInspector(bnaDivisa.id)}
+                    className="p-5 rounded-2xl bg-white border border-slate-200/80 hover:border-slate-300 cursor-pointer transition-all shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                      <span className="font-semibold text-slate-800">Dólar Minorista Divisa</span>
+                      <span className="font-mono text-slate-400">BNA · Transferencia</span>
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-3 my-2">
+                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
+                        {formatArs(bnaDivisa.value)}
+                      </span>
+                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
+                        <ArrowUpRight className="size-3.5" /> +0.05%
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 leading-relaxed mt-2">
+                      Cotización para transferencias y operaciones electrónicas bancarias reguladas por el Banco Nación. Compra: $1.508,00 | Venta: $1.517,00 al 13-10-2026.
+                    </p>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span>Ajuste: 13-10-2026</span>
+                      <span className="text-slate-900 font-sans font-medium flex items-center gap-0.5">
+                        Ver curva 30D / 90D / 1Y / 3Y <ChevronRight className="size-3" />
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Quick Chart Inline Container */}
             {activeVar && (
@@ -1509,122 +1754,232 @@ export default function App() {
                 <span>Transparencia y Rigor Metodológico · 13-10-2026</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-950">
-                Directorio de Fuentes Públicas y Cámaras Sectoriales
+                {selectedCountry === 'BR'
+                  ? 'Diretório de Fontes Oficiais & Câmaras Setoriais do Brasil'
+                  : 'Directorio de Fuentes Públicas y Cámaras Sectoriales de Argentina'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                Econoapp no inventa valores: releva y procesa datos suministrados directamente por entidades oficiales del Estado Nacional y cámaras representativas de la industria, comercio y finanzas.
+                {selectedCountry === 'BR'
+                  ? 'O Econoapp não cria nem estima valores: audita e consome dados fornecidos diretamente pelas entidades soberanas do Sistema Financeiro Nacional e câmaras representativas da produção, varejo e mercados de capitais.'
+                  : 'Econoapp no inventa valores: releva y procesa datos suministrados directamente por entidades oficiales del Estado Nacional y cámaras representativas de la industria, comercio y finanzas.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Fuentes Públicas Oficiales */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  <h3 className="text-sm font-bold text-slate-950">Entidades Públicas Oficiales</h3>
+            {selectedCountry === 'BR' ? (
+              /* FONTES BRASILEIRAS */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Entidades Públicas Oficiais do Brasil */}
+                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    <h3 className="text-sm font-bold text-slate-950">Entidades Públicas do Brasil</h3>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">BCB</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">bcb.gov.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Banco Central do Brasil. Fixa a Taxa Selic Meta (Copom), apura a PTAX diária oficial, reservas internacionais e a prévia do PIB (IBC-Br).</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">IBGE</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">ibge.gov.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Instituto Brasileiro de Geografia e Estatística. Calcula a inflação oficial (IPCA), INPC, Produção Industrial Mensal (PIM) e Varejo (PMC).</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">Tesouro Nacional</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">tesourodireto.com.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Secretaria do Tesouro Nacional. Gerencia a dívida pública federal e a plataforma de títulos de renda fixa Tesouro Direto (Selic, Prefixado, IPCA+).</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">SECEX / MDIC</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">gov.br/mdic</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Secretaria de Comércio Exterior. Publica o saldo da balança comercial brasileira, dados de exportação do agronegócio e importações.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">MTE</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">gov.br/trabalho</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Ministério do Trabalho e Emprego. Responsável pela atualização legal do Salário Mínimo Nacional e dados formais de trabalho (CAGED).</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">BCRA</strong>
-                      <span className="text-[11px] text-blue-600 font-mono">bcra.gob.ar</span>
-                    </div>
-                    <p className="text-slate-500 mt-1">Banco Central de la República Argentina. Informa Reservas, UVA, CER, BADLAR, ICL y el Relevamiento de Expectativas de Mercado (REM).</p>
+                {/* Câmaras Setoriais & Bolsas do Brasil */}
+                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                    <h3 className="text-sm font-bold text-slate-950">Câmaras Setoriais & Mercados (Brasil)</h3>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">BNA</strong>
-                      <span className="text-[11px] text-blue-600 font-mono">bna.com.ar</span>
+                  <div className="space-y-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">B3 S.A.</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">b3.com.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Brasil, Bolsa, Balcão. Apura diariamente a Taxa DI / CDI Over, contratos futuros de câmbio e infraestrutura dos mercados financeiros.</p>
                     </div>
-                    <p className="text-slate-500 mt-1">Banco de la Nación Argentina. Publica cotización oficial minorista de Dólar Billete y Dólar Divisa, y tasas de Plazo Fijo electrónico.</p>
-                  </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">INDEC</strong>
-                      <span className="text-[11px] text-blue-600 font-mono">indec.gob.ar</span>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">FGV IBRE</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">ibre.fgv.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Fundação Getulio Vargas. Calcula o IGP-M (índice de reajuste de aluguéis), IPC-S e as sondagens de confiança do consumidor e indústria.</p>
                     </div>
-                    <p className="text-slate-500 mt-1">Instituto Nacional de Estadística y Censos. Publica IPC, Canasta Básica Total y Alimentaria, IPIM y Estimador de Actividad (EMAE).</p>
-                  </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">ARCA (ex AFIP)</strong>
-                      <span className="text-[11px] text-blue-600 font-mono">arca.gob.ar</span>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">ANFAVEA</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">anfavea.com.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Associação Nacional dos Fabricantes de Veículos Automotores. Divulga a produção física, exportação e mercado de automóveis e caminhões.</p>
                     </div>
-                    <p className="text-slate-500 mt-1">Agencia de Recaudación y Control Aduanero. Emite los informes mensuales de recaudación tributaria nacional consolidada.</p>
-                  </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">MECON / Sec. Trabajo</strong>
-                      <span className="text-[11px] text-blue-600 font-mono">argentina.gob.ar</span>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">ANBIMA</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">anbima.com.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Associação dos Mercados Financeiro e de Capitais. Apura o Índice de Debêntures (IDA) e rentabilidades médias de renda fixa privada.</p>
                     </div>
-                    <p className="text-slate-500 mt-1">Secretaría de Trabajo. Elabora la Remuneración Imponible Promedio de los Trabajadores Estables (RIPTE).</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Cámaras Sectoriales y Bolsas */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                  <h3 className="text-sm font-bold text-slate-950">Cámaras Sectoriales y Bolsas</h3>
-                </div>
-
-                <div className="space-y-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">CIARA-CEC</strong>
-                      <span className="text-[11px] text-emerald-600 font-mono">ciaracec.com.ar</span>
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">FENABRAVE & ABRAS</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">fenabrave.org.br</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Federação Nacional da Distribuição de Veículos e Associação Brasileira de Supermercados. Monitoram emplacamentos e consumo nos lares.</p>
                     </div>
-                    <p className="text-slate-500 mt-1">Cámara de la Industria Aceitera y Centro de Exportadores de Cereales. Publica la liquidación semanal efectiva de divisas del agro.</p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">BYMA</strong>
-                      <span className="text-[11px] text-emerald-600 font-mono">byma.com.ar</span>
-                    </div>
-                    <p className="text-slate-500 mt-1">Bolsas y Mercados Argentinos. Provee las cotizaciones bursátiles implícitas Dólar MEP, Dólar CCL y tasas de caución a 1 día.</p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">ADEFA</strong>
-                      <span className="text-[11px] text-emerald-600 font-mono">adefa.org.ar</span>
-                    </div>
-                    <p className="text-slate-500 mt-1">Asociación de Fábricas de Automotores. Informa mensualmente la producción nacional, despachos y exportaciones del sector.</p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">CAME</strong>
-                      <span className="text-[11px] text-emerald-600 font-mono">redcame.org.ar</span>
-                    </div>
-                    <p className="text-slate-500 mt-1">Confederación Argentina de la Mediana Empresa. Releva el Índice de Ventas Minoristas Pymes en todo el territorio nacional.</p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">CAC</strong>
-                      <span className="text-[11px] text-emerald-600 font-mono">camarco.org.ar</span>
-                    </div>
-                    <p className="text-slate-500 mt-1">Cámara Argentina de la Construcción. Elabora el Índice del Costo de Construcción por metro cuadrado (materiales y mano de obra).</p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-slate-900 font-mono">Colegio de Escribanos CABA</strong>
-                      <span className="text-[11px] text-emerald-600 font-mono">colegio-escribanos.org.ar</span>
-                    </div>
-                    <p className="text-slate-500 mt-1">Releva y audita mensualmente la cantidad total de escrituras de compraventa inmobiliaria otorgadas en la Ciudad de Buenos Aires.</p>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* FONTES ARGENTINAS */
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Fuentes Públicas Oficiales */}
+                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                    <h3 className="text-sm font-bold text-slate-950">Entidades Públicas Oficiales</h3>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">BCRA</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">bcra.gob.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Banco Central de la República Argentina. Informa Reservas, UVA, CER, BADLAR, ICL y el Relevamiento de Expectativas de Mercado (REM).</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">BNA</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">bna.com.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Banco de la Nación Argentina. Publica cotización oficial minorista de Dólar Billete y Dólar Divisa, y tasas de Plazo Fijo electrónico.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">INDEC</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">indec.gob.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Instituto Nacional de Estadística y Censos. Publica IPC, Canasta Básica Total y Alimentaria, IPIM y Estimador de Actividad (EMAE).</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">ARCA (ex AFIP)</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">arca.gob.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Agencia de Recaudación y Control Aduanero. Emite los informes mensuales de recaudación tributaria nacional consolidada.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">MECON / Sec. Trabajo</strong>
+                        <span className="text-[11px] text-blue-600 font-mono">argentina.gob.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Secretaría de Trabajo. Elabora la Remuneración Imponible Promedio de los Trabajadores Estables (RIPTE).</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cámaras Sectoriales y Bolsas */}
+                <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                    <h3 className="text-sm font-bold text-slate-950">Cámaras Sectoriales y Bolsas</h3>
+                  </div>
+
+                  <div className="space-y-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">CIARA-CEC</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">ciaracec.com.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Cámara de la Industria Aceitera y Centro de Exportadores de Cereales. Publica la liquidación semanal efectiva de divisas del agro.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">BYMA</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">byma.com.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Bolsas y Mercados Argentinos. Provee las cotizaciones bursátiles implícitas Dólar MEP, Dólar CCL y tasas de caución a 1 día.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">ADEFA</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">adefa.org.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Asociación de Fábricas de Automotores. Informa mensualmente la producción nacional, despachos y exportaciones del sector.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">CAME</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">redcame.org.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Confederación Argentina de la Mediana Empresa. Releva el Índice de Ventas Minoristas Pymes en todo el territorio nacional.</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">CAC</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">camarco.org.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Cámara Argentina de la Construcción. Elabora el Índice del Costo de Construcción por metro cuadrado (materiales y mano de obra).</p>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <strong className="text-slate-900 font-mono">Colegio de Escribanos CABA</strong>
+                        <span className="text-[11px] text-emerald-600 font-mono">colegio-escribanos.org.ar</span>
+                      </div>
+                      <p className="text-slate-500 mt-1">Releva y audita mensualmente la cantidad total de escrituras de compraventa inmobiliaria otorgadas en la Ciudad de Buenos Aires.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1890,22 +2245,45 @@ export default function App() {
         {/* Minimal Footer */}
         <footer className="pt-8 pb-4 border-t border-slate-200/60 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <EconoLogo />
+            <EconoLogo
+              country={selectedCountry}
+              onSelectCountry={handleSelectCountry}
+            />
           </div>
           <div className="flex items-center gap-3 text-slate-400 text-[11px] font-mono flex-wrap">
-            <span>BNA</span>
-            <span>·</span>
-            <span>BCRA</span>
-            <span>·</span>
-            <span>INDEC</span>
-            <span>·</span>
-            <span>CIARA-CEC</span>
-            <span>·</span>
-            <span>ADEFA</span>
-            <span>·</span>
-            <span>BYMA</span>
-            <span>·</span>
-            <span>Actualizado al 13-10-2026</span>
+            {selectedCountry === 'BR' ? (
+              <>
+                <span>BCB</span>
+                <span>·</span>
+                <span>IBGE</span>
+                <span>·</span>
+                <span>B3</span>
+                <span>·</span>
+                <span>FGV IBRE</span>
+                <span>·</span>
+                <span>Tesouro</span>
+                <span>·</span>
+                <span>ANFAVEA</span>
+                <span>·</span>
+                <span>Atualizado em 13-10-2026</span>
+              </>
+            ) : (
+              <>
+                <span>BNA</span>
+                <span>·</span>
+                <span>BCRA</span>
+                <span>·</span>
+                <span>INDEC</span>
+                <span>·</span>
+                <span>CIARA-CEC</span>
+                <span>·</span>
+                <span>ADEFA</span>
+                <span>·</span>
+                <span>BYMA</span>
+                <span>·</span>
+                <span>Actualizado al 13-10-2026</span>
+              </>
+            )}
           </div>
         </footer>
       </main>
@@ -1929,7 +2307,7 @@ export default function App() {
           }`}
         >
           <span className="text-base font-mono font-bold leading-none">$</span>
-          <span className="text-[10px] tracking-tight mt-1">Dólar</span>
+          <span className="text-[10px] tracking-tight mt-1">{selectedCountry === 'BR' ? 'Câmbio' : 'Dólar'}</span>
         </button>
 
         <button
@@ -1939,7 +2317,7 @@ export default function App() {
           }`}
         >
           <Landmark className="size-4" />
-          <span className="text-[10px] tracking-tight mt-1">Plazo Fijo</span>
+          <span className="text-[10px] tracking-tight mt-1">{selectedCountry === 'BR' ? 'CDB' : 'Plazo Fijo'}</span>
         </button>
 
         <button
