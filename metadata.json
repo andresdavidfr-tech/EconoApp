@@ -1,0 +1,6 @@
+{
+  "name": "Monitor Económico Argentino",
+  "description": "Plataforma de seguimiento y creación de monitores personalizables de variables económicas oficiales de la República Argentina (BCRA, INDEC, MECON, ARCA).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
