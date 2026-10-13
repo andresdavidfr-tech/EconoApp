@@ -56,7 +56,7 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
       });
     }
 
-    const trimmedHistory = newHistory.slice(-30);
+    const trimmedHistory = newHistory.slice(-1200);
 
     return {
       ...variable,

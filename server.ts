@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { ARGENTINA_ECONOMIC_VARIABLES } from "./src/data";
+import { ARGENTINA_ECONOMIC_VARIABLES, ECONOMIC_TOPICS } from "./src/data";
 import { syncVariablesToCurrentDate } from "./src/dailySync";
 import { EconomicVariable } from "./src/types";
 import { computeBankRates } from "./src/fixedTermData";
@@ -104,6 +104,11 @@ async function startServer() {
   app.get("/api/variables", (req, res) => {
     runDailyAutoSync();
     res.json(variablesStore);
+  });
+
+  // API 2b: List curated economic topics with key public & chamber sources
+  app.get("/api/topics", (req, res) => {
+    res.json(ECONOMIC_TOPICS);
   });
 
   // API 3: Update a variable (simulating automated/manual fetch)

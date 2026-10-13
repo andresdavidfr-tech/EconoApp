@@ -5,14 +5,48 @@ export interface HistoricalDataPoint {
 
 export type VariableCategory = 'FINANCIAL_RATES' | 'MONETARY_EXCHANGE' | 'MACRO_INFLATION_FISCAL' | 'SECTORS_SALARIES_SOCIAL';
 
+export type TopicId =
+  | 'cambiario_divisas'
+  | 'precios_inflacion'
+  | 'tasas_ahorro'
+  | 'actividad_industria'
+  | 'credito_salarios';
+
+export interface TopicSource {
+  id: string;
+  name: string;
+  fullName: string;
+  type: 'publica' | 'camara';
+  scope?: string;
+  role?: string;
+  url: string;
+}
+
+export interface EconomicTopic {
+  id: TopicId;
+  name: string;
+  shortName: string;
+  tagline: string;
+  description: string;
+  iconName: string;
+  accentColor: string; // 'blue' | 'emerald' | 'amber' | 'violet' | 'rose'
+  imageUrl: string;
+  imageAlt?: string;
+  visualSummary?: string;
+  sources: TopicSource[];
+  variableIds: string[];
+}
+
 export interface EconomicVariable {
   id: string; // e.g. "rem_inflacion_esperada", "bna_dolar_billete"
   name: string;
   category: VariableCategory;
+  topicId: TopicId;
+  sourceType: 'publica' | 'camara';
   value: number;
   unit: string; // e.g. "%", "ARS", "USD (M)", "Índice"
   frequency: 'Diaria' | 'Mensual' | 'Trimestral';
-  source: string; // e.g. "BCRA", "INDEC", "MECON", "ARCA"
+  source: string; // e.g. "BCRA", "INDEC", "MECON", "ARCA", "ADEFA", "CIARA-CEC"
   sourceUrl: string;
   description: string;
   lastUpdated: string; // YYYY-MM-DD
