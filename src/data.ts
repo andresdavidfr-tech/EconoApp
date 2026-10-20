@@ -1,4 +1,5 @@
 import { EconomicVariable, EconomicTopic } from './types';
+import { applyVerifiedSnapshot } from './verifiedSnapshot';
 
 interface Milestone {
   date: string;
@@ -325,7 +326,7 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
  * 29 Variables Económicas Oficiales y de Cámaras Sectoriales de Argentina.
  * Serie histórica rigurosa de 3 años relevada directamente de fuentes primarias (BCRA, BNA, INDEC, BYMA, CIARA-CEC, CAC, ADEFA, CAMMESA, CAME, ARCA, Colegio de Escribanos).
  */
-export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
+const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
   // ==========================================
   // TEMA 1: MERCADO CAMBIARIO Y DIVISAS
   // ==========================================
@@ -1261,3 +1262,6 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     ]
   }
 ];
+
+// Los valores cargados a mano se corrigen con la última verificación contra fuentes públicas
+export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = applyVerifiedSnapshot(RAW_ARGENTINA_ECONOMIC_VARIABLES);

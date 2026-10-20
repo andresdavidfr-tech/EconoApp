@@ -57,6 +57,7 @@ export interface EconomicVariable {
   history: HistoricalDataPoint[];
   live?: boolean;       // true si el valor viene de una fuente consultada en vivo
   fetchedAt?: string;   // ISO: cuándo se consultó la fuente por última vez
+  verifiedAt?: string;  // YYYY-MM-DD: fecha en que se verificó manualmente contra una publicación
 }
 
 export interface SecurityNotice {

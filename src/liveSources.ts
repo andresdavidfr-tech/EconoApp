@@ -38,15 +38,15 @@ const daysBetween = (a: string, b: string) =>
 
 /* ----------------------------- BCRA ----------------------------- */
 
-interface BcraRule { id: string; all: string[]; none?: string[]; tol: number }
+interface BcraRule { id: string; all: string[]; none?: string[]; tol: number | null }
 
 // Se identifican por descripción (los IDs numéricos del BCRA cambiaron entre versiones de la API).
 export const BCRA_RULES: BcraRule[] = [
-  { id: 'reservas_brutas', all: ['reservas internacionales'], tol: 0.4 },
-  { id: 'tasa_badlar', all: ['badlar', 'privados', 'n.a'], none: ['dolares'], tol: 0.4 },
-  { id: 'valor_uva', all: ['unidad de valor adquisitivo'], none: ['vivienda'], tol: 0.4 },
-  { id: 'coeficiente_cer', all: ['coeficiente de estabilizacion de referencia'], tol: 0.4 },
-  { id: 'indice_icl', all: ['contratos de locacion'], tol: 0.4 },
+  { id: 'reservas_brutas', all: ['reservas internacionales'], tol: null },
+  { id: 'tasa_badlar', all: ['badlar', 'privados', 'n.a'], none: ['dolares'], tol: null },
+  { id: 'valor_uva', all: ['unidad de valor adquisitivo'], none: ['vivienda'], tol: null },
+  { id: 'coeficiente_cer', all: ['coeficiente de estabilizacion de referencia'], tol: null },
+  { id: 'indice_icl', all: ['contratos de locacion'], tol: null },
 ];
 
 export function matchBcra(results: any[]): LiveValue[] {

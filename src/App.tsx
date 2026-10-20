@@ -1217,10 +1217,14 @@ export default function App() {
                                   <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
                                     {variable.lastUpdated}
                                     <span
-                                      className={variable.live ? 'ml-1.5 text-emerald-600' : 'ml-1.5 text-slate-400'}
-                                      title={variable.live ? 'Consultado a la fuente oficial' : 'Dato cargado manualmente; todavía no se consulta en vivo'}
+                                      className={variable.live ? 'ml-1.5 text-emerald-600' : variable.verifiedAt ? 'ml-1.5 text-amber-600' : 'ml-1.5 text-slate-400'}
+                                      title={variable.live
+                                        ? 'Consultado a la fuente oficial'
+                                        : variable.verifiedAt
+                                          ? `Verificado manualmente el ${variable.verifiedAt}; se reemplaza cuando la fuente responde`
+                                          : 'Dato cargado manualmente y sin verificar'}
                                     >
-                                      {variable.live ? '● en vivo' : '○ estático'}
+                                      {variable.live ? '● en vivo' : variable.verifiedAt ? '◐ verificado' : '○ sin verificar'}
                                     </span>
                                   </span>
                                 </div>
