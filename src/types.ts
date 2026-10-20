@@ -53,8 +53,10 @@ export interface EconomicVariable {
   source: string; // e.g. "BCRA", "INDEC", "BCB", "IBGE", "B3", "FGV"
   sourceUrl: string;
   description: string;
-  lastUpdated: string; // YYYY-MM-DD
+  lastUpdated: string; // YYYY-MM-DD (fecha real del dato)
   history: HistoricalDataPoint[];
+  live?: boolean;       // true si el valor viene de una fuente consultada en vivo
+  fetchedAt?: string;   // ISO: cuándo se consultó la fuente por última vez
 }
 
 export interface SecurityNotice {

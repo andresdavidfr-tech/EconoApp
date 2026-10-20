@@ -1216,6 +1216,12 @@ export default function App() {
                                   </span>
                                   <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
                                     {variable.lastUpdated}
+                                    <span
+                                      className={variable.live ? 'ml-1.5 text-emerald-600' : 'ml-1.5 text-slate-400'}
+                                      title={variable.live ? 'Consultado a la fuente oficial' : 'Dato cargado manualmente; todavía no se consulta en vivo'}
+                                    >
+                                      {variable.live ? '● en vivo' : '○ estático'}
+                                    </span>
                                   </span>
                                 </div>
 

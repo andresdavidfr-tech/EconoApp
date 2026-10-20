@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { ARGENTINA_ECONOMIC_VARIABLES, ECONOMIC_TOPICS } from "./src/data";
 import { BRAZIL_ECONOMIC_VARIABLES, BRAZIL_ECONOMIC_TOPICS } from "./src/brazilData";
 import { syncVariablesToCurrentDate, todayAR } from "./src/dailySync";
+import { fetchBcra, fetchBna, fetchDolarApi, fetchIndec, LiveValue } from "./src/liveSources";
 import { EconomicVariable } from "./src/types";
 import { computeBankRates, computeBrazilBankRates } from "./src/fixedTermData";
 
@@ -35,64 +36,102 @@ function getGeminiClient() {
 // Memory store for economic variables to persist updates in memory during runtime sessions
 let variablesStore: EconomicVariable[] = [...ARGENTINA_ECONOMIC_VARIABLES];
 let lastSyncTimestamp = new Date().toISOString();
-let lastExternalAttempt = 0;
-let lastExternalSuccess: string | null = null;
 
-const EXTERNAL_SYNC_MIN_INTERVAL_MS = 60 * 1000; // nunca más de 1 consulta externa por minuto
-const FETCH_TIMEOUT_MS = 8000;
+type SourceName = "bna" | "dolarapi" | "bcra" | "indec";
+interface SourceState { lastAttempt: number; lastSuccess: string | null; lastError: string | null; updated: number; }
+
+// Frecuencia mínima de consulta por fuente: cotizaciones 5 min, BCRA 30 min, INDEC 6 h
+const SOURCE_TTL_MS: Record<SourceName, number> = {
+  bna: 5 * 60 * 1000,
+  dolarapi: 5 * 60 * 1000,
+  bcra: 30 * 60 * 1000,
+  indec: 6 * 60 * 60 * 1000,
+};
+const sourceState: Record<SourceName, SourceState> = {
+  bna: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
+  dolarapi: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
+  bcra: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
+  indec: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
+};
+const inFlight = new Set<SourceName>();
 
 const fmtAr = (n: number) => n.toLocaleString("es-AR", { minimumFractionDigits: 2 });
 
-// Mapeo casa (DolarApi) -> variable del monitor. "mayorista" se excluye a propósito:
-// no equivale a la divisa minorista del BNA y mezclaba fuentes distintas.
-const DOLAR_MAP: Record<string, { id: string; desc: string }> = {
-  oficial: { id: "bna_dolar_billete", desc: "Cotización oficial de venta del dólar minorista en ventanilla publicada por BNA." },
-  blue: { id: "dolar_blue", desc: "Cotización informal del dólar billete en el mercado libre de cambios." },
-  bolsa: { id: "dolar_mep_byma", desc: "Tipo de cambio implícito en la liquidación de bonos soberanos (AL30/GD30) en BYMA." },
-  contadoconliqui: { id: "dolar_ccl_byma", desc: "Cotización implícita para transferencias al exterior mediante bonos o CEDEARs registrada en BYMA." },
-  tarjeta: { id: "dolar_tarjeta", desc: "Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior, incluyendo percepciones tributarias." },
-  cripto: { id: "dolar_cripto", desc: "Cotización en tiempo real de paridad ARS/USDT en plataformas de activos virtuales." },
-};
+function plausible(oldVal: number, newVal: number, tol: number | null | undefined): boolean {
+  if (tol == null) return true; // el conector ya validó el rango
+  if (!(oldVal > 0)) return true;
+  return Math.abs(newVal / oldVal - 1) <= tol;
+}
 
-/**
- * Relevamiento de tipos de cambio de Argentina mediante API pública (DolarApi).
- * Con límite de frecuencia y timeout; actualiza también fecha e historial del día.
- */
-async function syncExternalDollarRates(force = false): Promise<boolean> {
-  const now = Date.now();
-  if (!force && now - lastExternalAttempt < EXTERNAL_SYNC_MIN_INTERVAL_MS) return false;
-  lastExternalAttempt = now;
-  try {
-    const res = await fetch("https://dolarapi.com/v1/dolares", { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    if (!res.ok) return false;
-    const data = (await res.json()) as Array<{ casa: string; compra: number; venta: number }>;
-    if (!Array.isArray(data)) return false;
-    const today = todayAR();
-    let updated = 0;
-    for (const item of data) {
-      const map = DOLAR_MAP[item.casa];
-      if (!map || typeof item.venta !== "number" || !(item.venta > 0)) continue;
-      const v = variablesStore.find(x => x.id === map.id);
-      if (!v) continue;
-      v.value = item.venta;
-      v.lastUpdated = today;
-      const last = v.history[v.history.length - 1];
-      if (last && last.date === today) last.value = item.venta;
-      else v.history = [...v.history, { date: today, value: item.venta }].slice(-1200);
-      const compra = typeof item.compra === "number" ? `Compra: $${fmtAr(item.compra)} | ` : "";
-      v.description = `${map.desc} ${compra}Venta: $${fmtAr(item.venta)}.`;
-      updated++;
-    }
-    if (updated > 0) {
-      lastExternalSuccess = new Date().toISOString();
-      lastSyncTimestamp = lastExternalSuccess;
-      console.log(`[Auto-Sync] ${updated} cotizaciones del dólar actualizadas con DolarApi`);
-    }
-    return updated > 0;
-  } catch (err) {
-    console.warn("[Auto-Sync] No se pudo obtener cotizaciones de DolarApi; se mantienen los últimos valores:", (err as Error).message);
+/** Aplica un valor obtenido de una fuente. Nunca retrocede en el tiempo ni acepta valores fuera de rango. */
+function applyLive(r: LiveValue, source: SourceName): boolean {
+  const v = variablesStore.find(x => x.id === r.id);
+  if (!v) return false;
+  if (!Number.isFinite(r.value) || !plausible(v.value, r.value, r.tol)) {
+    console.warn(`[Sync:${source}] ${r.id}: valor ${r.value} descartado (fuera de rango respecto de ${v.value})`);
     return false;
   }
+  const last = v.history[v.history.length - 1];
+  if (r.history && r.history.length >= 3) {
+    // La fuente entrega la serie real: reemplaza a la cargada a mano (que podía tener puntos proyectados)
+    v.history = r.history.slice(-1200);
+  } else {
+    if (last && r.date < last.date.slice(0, 10)) return false; // dato más viejo que el que ya tenemos
+    if (last && last.date.slice(0, 10) === r.date) last.value = r.value;
+    else v.history = [...v.history, { date: r.date, value: r.value }].slice(-1200);
+  }
+  v.value = r.value;
+  v.lastUpdated = r.date;
+  v.live = true;
+  v.fetchedAt = new Date().toISOString();
+  if (r.extra?.compra != null) {
+    v.description = v.description.replace(/\s*Compra: \$[^|]*\|\s*Venta: \$[\d.,]+\.?/, "").trim();
+    v.description = `${v.description} Compra: $${fmtAr(r.extra.compra)} | Venta: $${fmtAr(r.value)}.`;
+  }
+  return true;
+}
+
+async function refreshSource(name: SourceName, force = false): Promise<void> {
+  const st = sourceState[name];
+  const now = Date.now();
+  if (inFlight.has(name) || (!force && now - st.lastAttempt < SOURCE_TTL_MS[name])) return;
+  inFlight.add(name);
+  st.lastAttempt = now;
+  try {
+    const today = todayAR();
+    let values: LiveValue[] = [];
+    if (name === "bna") values = await fetchBna(today);
+    else if (name === "bcra") values = await fetchBcra(today);
+    else if (name === "indec") values = await fetchIndec();
+    else {
+      // Si el BNA respondió hace poco, su cotización oficial tiene prioridad sobre la de DolarApi
+      const bnaFresh = sourceState.bna.lastSuccess && now - Date.parse(sourceState.bna.lastSuccess) < 15 * 60 * 1000;
+      values = await fetchDolarApi(today, new Set(bnaFresh ? ["bna_dolar_billete"] : []));
+    }
+    const applied = values.filter(v => applyLive(v, name)).length;
+    st.updated = applied;
+    st.lastError = applied === 0 ? "Datos recibidos pero descartados por validación" : null;
+    if (applied > 0) {
+      st.lastSuccess = new Date().toISOString();
+      lastSyncTimestamp = st.lastSuccess;
+      console.log(`[Sync:${name}] ${applied} variables actualizadas`);
+    }
+  } catch (err) {
+    st.lastError = (err as Error).message;
+    console.warn(`[Sync:${name}] falló: ${st.lastError}. Se conservan los últimos valores.`);
+  } finally {
+    inFlight.delete(name);
+  }
+}
+
+async function refreshAll(force = false): Promise<void> {
+  // El BNA va primero para poder darle prioridad sobre DolarApi
+  await refreshSource("bna", force);
+  await Promise.allSettled([
+    refreshSource("dolarapi", force),
+    refreshSource("bcra", force),
+    refreshSource("indec", force),
+  ]);
 }
 
 function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
@@ -101,14 +140,10 @@ function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
   return { updatedCount: result.updatedCount, syncDate: result.syncDate };
 }
 
-// Sincronización inicial
-syncExternalDollarRates(true).catch(() => {});
-
-// Revisión automática periódica cada 5 minutos en segundo plano
+// Sincronización inicial y revisión periódica cada 5 minutos (cada fuente respeta su propio intervalo)
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
-setInterval(() => {
-  syncExternalDollarRates(true).catch(() => {});
-}, FIVE_MINUTES_MS);
+refreshAll(true).catch(() => {});
+setInterval(() => { refreshAll().catch(() => {}); }, FIVE_MINUTES_MS);
 
 // --- Utilidades de seguridad ---
 const rateBuckets = new Map<string, number[]>();
@@ -145,18 +180,22 @@ async function startServer() {
 
   // API 1b: Sync Status & Configuration
   app.get("/api/sync/status", (req, res) => {
-    const fresh = lastExternalSuccess && Date.now() - Date.parse(lastExternalSuccess) < 15 * 60 * 1000;
+    const liveCount = variablesStore.filter(v => v.live).length;
+    const anyFresh = Object.values(sourceState).some(
+      st => st.lastSuccess && Date.now() - Date.parse(st.lastSuccess) < 15 * 60 * 1000
+    );
     res.json({
       autoUpdate: true,
       intervalMinutes: 5,
       intervalMs: FIVE_MINUTES_MS,
       lastSyncDate: lastSyncTimestamp.split("T")[0],
       lastSyncTime: lastSyncTimestamp,
-      lastExternalSuccess,
-      status: fresh ? "up_to_date" : "degraded",
+      status: anyFresh ? "up_to_date" : "degraded",
       totalVariables: variablesStore.length,
-      frequency: "cada 5 minutos",
-      sources: ["BNA", "BCRA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
+      liveVariables: liveCount,
+      staticVariables: variablesStore.length - liveCount,
+      sources: sourceState,
+      frequency: "cada 5 minutos"
     });
   });
 
@@ -165,7 +204,7 @@ async function startServer() {
     if (rateLimited(`trigger:${req.ip}`, 6, 60 * 1000)) {
       return res.status(429).json({ error: "Demasiadas solicitudes. Probá de nuevo en un minuto." });
     }
-    await syncExternalDollarRates();
+    await refreshAll(true);
     const result = runDailyAutoSync();
     res.json({
       success: true,
@@ -204,7 +243,7 @@ async function startServer() {
     if (country === 'BR') {
       return res.json(BRAZIL_ECONOMIC_VARIABLES);
     }
-    syncExternalDollarRates().catch(() => {}); // limitado a 1 por minuto
+    refreshAll().catch(() => {}); // cada fuente respeta su intervalo mínimo
     res.json(variablesStore);
   });
 
