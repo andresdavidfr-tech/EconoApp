@@ -1,14 +1,16 @@
+import "dotenv/config";
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { ARGENTINA_ECONOMIC_VARIABLES, ECONOMIC_TOPICS } from "./src/data";
 import { BRAZIL_ECONOMIC_VARIABLES, BRAZIL_ECONOMIC_TOPICS } from "./src/brazilData";
-import { syncVariablesToCurrentDate } from "./src/dailySync";
+import { syncVariablesToCurrentDate, todayAR } from "./src/dailySync";
 import { EconomicVariable } from "./src/types";
 import { computeBankRates, computeBrazilBankRates } from "./src/fixedTermData";
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Lazy initialize Gemini client
 let aiClient: GoogleGenAI | null = null;
@@ -33,107 +35,108 @@ function getGeminiClient() {
 // Memory store for economic variables to persist updates in memory during runtime sessions
 let variablesStore: EconomicVariable[] = [...ARGENTINA_ECONOMIC_VARIABLES];
 let lastSyncTimestamp = new Date().toISOString();
+let lastExternalAttempt = 0;
+let lastExternalSuccess: string | null = null;
+
+const EXTERNAL_SYNC_MIN_INTERVAL_MS = 60 * 1000; // nunca más de 1 consulta externa por minuto
+const FETCH_TIMEOUT_MS = 8000;
+
+const fmtAr = (n: number) => n.toLocaleString("es-AR", { minimumFractionDigits: 2 });
+
+// Mapeo casa (DolarApi) -> variable del monitor. "mayorista" se excluye a propósito:
+// no equivale a la divisa minorista del BNA y mezclaba fuentes distintas.
+const DOLAR_MAP: Record<string, { id: string; desc: string }> = {
+  oficial: { id: "bna_dolar_billete", desc: "Cotización oficial de venta del dólar minorista en ventanilla publicada por BNA." },
+  blue: { id: "dolar_blue", desc: "Cotización informal del dólar billete en el mercado libre de cambios." },
+  bolsa: { id: "dolar_mep_byma", desc: "Tipo de cambio implícito en la liquidación de bonos soberanos (AL30/GD30) en BYMA." },
+  contadoconliqui: { id: "dolar_ccl_byma", desc: "Cotización implícita para transferencias al exterior mediante bonos o CEDEARs registrada en BYMA." },
+  tarjeta: { id: "dolar_tarjeta", desc: "Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior, incluyendo percepciones tributarias." },
+  cripto: { id: "dolar_cripto", desc: "Cotización en tiempo real de paridad ARS/USDT en plataformas de activos virtuales." },
+};
 
 /**
- * Relevamiento en tiempo real de tipos de cambio de Argentina mediante API pública
+ * Relevamiento de tipos de cambio de Argentina mediante API pública (DolarApi).
+ * Con límite de frecuencia y timeout; actualiza también fecha e historial del día.
  */
-async function syncExternalDollarRates() {
+async function syncExternalDollarRates(force = false): Promise<boolean> {
+  const now = Date.now();
+  if (!force && now - lastExternalAttempt < EXTERNAL_SYNC_MIN_INTERVAL_MS) return false;
+  lastExternalAttempt = now;
   try {
-    const res = await fetch("https://dolarapi.com/v1/dolares");
-    if (res.ok) {
-      const data = (await res.json()) as Array<{
-        moneda: string;
-        casa: string;
-        nombre: string;
-        compra: number;
-        venta: number;
-        fechaActualizacion: string;
-      }>;
-      if (Array.isArray(data)) {
-        for (const item of data) {
-          if (item.casa === "oficial") {
-            const v = variablesStore.find(x => x.id === "bna_dolar_billete");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Cotización oficial de venta del dólar minorista en ventanilla publicada por BNA. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          } else if (item.casa === "blue") {
-            const v = variablesStore.find(x => x.id === "dolar_blue");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Cotización informal del dólar billete en el mercado libre de cambios. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          } else if (item.casa === "bolsa") {
-            const v = variablesStore.find(x => x.id === "dolar_mep_byma");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Tipo de cambio implícito en la liquidación de bonos soberanos (AL30/GD30) en BYMA. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          } else if (item.casa === "contadoconliqui") {
-            const v = variablesStore.find(x => x.id === "dolar_ccl_byma");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Cotización implícita para transferencias al exterior mediante bonos o CEDEARs registrada en BYMA. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          } else if (item.casa === "mayorista") {
-            const v = variablesStore.find(x => x.id === "bna_dolar_divisa");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Cotización oficial del dólar modalidad divisa o comercio exterior (BCRA Com. A 3500). Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          } else if (item.casa === "tarjeta") {
-            const v = variablesStore.find(x => x.id === "dolar_tarjeta");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior, incluyendo percepciones tributarias. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          } else if (item.casa === "cripto") {
-            const v = variablesStore.find(x => x.id === "dolar_cripto");
-            if (v && item.venta) {
-              v.value = item.venta;
-              v.description = `Cotización en tiempo real de paridad ARS/USDT en plataformas de activos virtuales. Compra: $${item.compra.toLocaleString('es-AR', { minimumFractionDigits: 2 })} | Venta: $${item.venta.toLocaleString('es-AR', { minimumFractionDigits: 2 })}.`;
-            }
-          }
-        }
-        console.log("[Auto-Sync] Cotizaciones del dólar actualizadas en tiempo real con DolarApi");
-      }
+    const res = await fetch("https://dolarapi.com/v1/dolares", { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    if (!res.ok) return false;
+    const data = (await res.json()) as Array<{ casa: string; compra: number; venta: number }>;
+    if (!Array.isArray(data)) return false;
+    const today = todayAR();
+    let updated = 0;
+    for (const item of data) {
+      const map = DOLAR_MAP[item.casa];
+      if (!map || typeof item.venta !== "number" || !(item.venta > 0)) continue;
+      const v = variablesStore.find(x => x.id === map.id);
+      if (!v) continue;
+      v.value = item.venta;
+      v.lastUpdated = today;
+      const last = v.history[v.history.length - 1];
+      if (last && last.date === today) last.value = item.venta;
+      else v.history = [...v.history, { date: today, value: item.venta }].slice(-1200);
+      const compra = typeof item.compra === "number" ? `Compra: $${fmtAr(item.compra)} | ` : "";
+      v.description = `${map.desc} ${compra}Venta: $${fmtAr(item.venta)}.`;
+      updated++;
     }
+    if (updated > 0) {
+      lastExternalSuccess = new Date().toISOString();
+      lastSyncTimestamp = lastExternalSuccess;
+      console.log(`[Auto-Sync] ${updated} cotizaciones del dólar actualizadas con DolarApi`);
+    }
+    return updated > 0;
   } catch (err) {
-    console.warn("[Auto-Sync] No se pudo obtener cotizaciones online de DolarApi, utilizando valores calibrados de contingencia:", err);
+    console.warn("[Auto-Sync] No se pudo obtener cotizaciones de DolarApi; se mantienen los últimos valores:", (err as Error).message);
+    return false;
   }
 }
 
 function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
   const result = syncVariablesToCurrentDate(variablesStore);
   variablesStore = result.updatedVariables;
-  lastSyncTimestamp = new Date().toISOString();
-  // Disparar sincronización de cotizaciones en tiempo real
-  syncExternalDollarRates().catch(() => {});
-  if (result.updatedCount > 0) {
-    console.log(`[Auto-Sync] ${result.updatedCount} variables actualizadas automáticamente al día ${result.syncDate}`);
-  }
   return { updatedCount: result.updatedCount, syncDate: result.syncDate };
 }
 
-// Initial sync at module load
-runDailyAutoSync();
-syncExternalDollarRates().catch(() => {});
+// Sincronización inicial
+syncExternalDollarRates(true).catch(() => {});
 
-// Revisión automática periódica cada 5 minutos (300.000 ms) en segundo plano
+// Revisión automática periódica cada 5 minutos en segundo plano
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 setInterval(() => {
-  try {
-    const res = runDailyAutoSync();
-    syncExternalDollarRates().catch(() => {});
-    console.log(`[Auto-Sync 5min] Revisión automática ejecutada (${new Date().toLocaleTimeString()}): ${res.updatedCount} actualizadas.`);
-  } catch (err) {
-    console.error("[Auto-Sync 5min] Error en revisión periódica:", err);
-  }
+  syncExternalDollarRates(true).catch(() => {});
 }, FIVE_MINUTES_MS);
+
+// --- Utilidades de seguridad ---
+const rateBuckets = new Map<string, number[]>();
+function rateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const hits = (rateBuckets.get(key) || []).filter(t => now - t < windowMs);
+  if (hits.length >= max) {
+    rateBuckets.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  rateBuckets.set(key, hits);
+  return false;
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, hits] of rateBuckets) {
+    if (!hits.some(t => now - t < 10 * 60 * 1000)) rateBuckets.delete(k);
+  }
+}, 10 * 60 * 1000).unref();
+
+const MAX_MESSAGE_CHARS = 2000;
+const MAX_HISTORY_MESSAGES = 6;
 
 async function startServer() {
   const app = express();
-  app.use(express.json());
+  app.set("trust proxy", 1);
+  app.use(express.json({ limit: "100kb" }));
 
   // API 1: Health check
   app.get("/api/health", (req, res) => {
@@ -142,27 +145,31 @@ async function startServer() {
 
   // API 1b: Sync Status & Configuration
   app.get("/api/sync/status", (req, res) => {
-    const today = new Date().toISOString().split("T")[0];
+    const fresh = lastExternalSuccess && Date.now() - Date.parse(lastExternalSuccess) < 15 * 60 * 1000;
     res.json({
       autoUpdate: true,
       intervalMinutes: 5,
       intervalMs: FIVE_MINUTES_MS,
-      lastSyncDate: today,
+      lastSyncDate: lastSyncTimestamp.split("T")[0],
       lastSyncTime: lastSyncTimestamp,
-      status: "up_to_date",
+      lastExternalSuccess,
+      status: fresh ? "up_to_date" : "degraded",
       totalVariables: variablesStore.length,
       frequency: "cada 5 minutos",
       sources: ["BNA", "BCRA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
     });
   });
 
-  // API 1c: Trigger manual/forced auto-sync
+  // API 1c: Trigger manual sync (limitado por IP y con tope de frecuencia)
   app.post("/api/sync/trigger", async (req, res) => {
+    if (rateLimited(`trigger:${req.ip}`, 6, 60 * 1000)) {
+      return res.status(429).json({ error: "Demasiadas solicitudes. Probá de nuevo en un minuto." });
+    }
     await syncExternalDollarRates();
     const result = runDailyAutoSync();
     res.json({
       success: true,
-      message: "Revisión de datos ejecutada con fuentes oficiales y mercados en tiempo real",
+      message: "Revisión de datos ejecutada",
       syncDate: result.syncDate,
       lastSyncTime: lastSyncTimestamp,
       updatedCount: result.updatedCount,
@@ -197,7 +204,7 @@ async function startServer() {
     if (country === 'BR') {
       return res.json(BRAZIL_ECONOMIC_VARIABLES);
     }
-    runDailyAutoSync();
+    syncExternalDollarRates().catch(() => {}); // limitado a 1 por minuto
     res.json(variablesStore);
   });
 
@@ -212,6 +219,10 @@ async function startServer() {
 
   // API 3: Update a variable (simulating automated/manual fetch)
   app.post("/api/variables/:id", (req, res) => {
+    const adminToken = process.env.ADMIN_TOKEN;
+    if (!adminToken || req.header("x-admin-token") !== adminToken) {
+      return res.status(403).json({ error: "No autorizado." });
+    }
     const { id } = req.params;
     const { value, lastUpdated } = req.body;
     const varIdx = variablesStore.findIndex(v => v.id === id);
@@ -227,7 +238,7 @@ async function startServer() {
     const updatedVar = variablesStore[varIdx];
     const oldVal = updatedVar.value;
     updatedVar.value = value;
-    updatedVar.lastUpdated = lastUpdated || new Date().toISOString().split('T')[0];
+    updatedVar.lastUpdated = lastUpdated || todayAR();
     
     // Add to history
     updatedVar.history = [
@@ -241,10 +252,16 @@ async function startServer() {
 
   // API 4: Gemini Economic Advisor with Search Grounding
   app.post("/api/gemini/advisor", async (req, res) => {
-    const { message, previousMessages } = req.body;
+    const { message, previousMessages } = req.body || {};
 
-    if (!message) {
-      return res.status(400).json({ error: "Mensaje vacío." });
+    if (typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({ error: "Mensaje vacío.", text: "El mensaje está vacío." });
+    }
+    if (message.length > MAX_MESSAGE_CHARS) {
+      return res.status(413).json({ error: "Mensaje demasiado largo.", text: `El mensaje supera los ${MAX_MESSAGE_CHARS} caracteres.` });
+    }
+    if (rateLimited(`advisor:${req.ip}`, 10, 60 * 1000)) {
+      return res.status(429).json({ error: "Límite de consultas.", text: "Hiciste demasiadas consultas seguidas. Esperá un minuto e intentá de nuevo." });
     }
 
     try {
@@ -264,7 +281,7 @@ async function startServer() {
       const systemPrompt = `Eres un Economista y Consultor Senior experto en Macroeconomía Argentina.
 Tu tarea es analizar variables y brindar respuestas basadas EXCLUSIVAMENTE en datos públicos e institucionales fidedignos de la República Argentina (principalmente del Banco Central de la República Argentina - BCRA, Banco de la Nación Argentina - BNA, e INDEC).
 
-Tienes a tu disposición las variables económicas oficiales vigentes en el monitor del usuario al 13-10-2026:
+Tienes a tu disposición las variables económicas oficiales vigentes en el monitor del usuario al ${todayAR()}:
 ${listSummary}
 
 DIRECTIVAS CRÍTICAS Y OBLIGATORIAS:
@@ -278,17 +295,23 @@ DIRECTIVAS CRÍTICAS Y OBLIGATORIAS:
 8. Formato: Escribe en Markdown de forma sintetizada, profesional, estructurada y en español rioplatense institucional.`;
 
       // Structure conversation history for Gemini generateContent
-      const contents = [];
+      const contents: { role: string; parts: { text: string }[] }[] = [];
       
-      if (previousMessages && Array.isArray(previousMessages)) {
-        for (const msg of previousMessages) {
+      if (Array.isArray(previousMessages)) {
+        for (const msg of previousMessages.slice(-MAX_HISTORY_MESSAGES)) {
+          // Acepta {sender,text} o {role,parts:[{text}]}
+          const text: unknown = msg?.text ?? msg?.parts?.[0]?.text;
+          if (typeof text !== "string" || !text.trim()) continue;
+          const isUser = msg?.sender ? msg.sender === "user" : msg?.role === "user";
+          // El historial debe empezar con un turno del usuario
+          if (contents.length === 0 && !isUser) continue;
           contents.push({
-            role: msg.sender === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.text }]
+            role: isUser ? "user" : "model",
+            parts: [{ text: text.slice(0, MAX_MESSAGE_CHARS) }]
           });
         }
       }
-      
+
       contents.push({
         role: 'user',
         parts: [{ text: message }]
@@ -323,6 +346,7 @@ DIRECTIVAS CRÍTICAS Y OBLIGATORIAS:
 
       res.json({
         text: responseText,
+        reply: responseText,
         sources: sources
       });
 

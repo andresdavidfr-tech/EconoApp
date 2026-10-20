@@ -46,6 +46,7 @@ import {
   BRAZIL_OFFICIAL_QUOTES
 } from './brazilData';
 import { computeBankRates, computeBrazilBankRates } from './fixedTermData';
+import { todayAR } from './dailySync';
 import { ArgentinaFlag, BrazilFlag } from './components/FlagIcons';
 import { TopicTechVisualizer } from './components/TopicTechVisualizer';
 
@@ -283,7 +284,7 @@ export default function App() {
     selectedCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES
   );
   const [bankRates, setBankRates] = useState<BankFixedTermRate[]>(() =>
-    selectedCountry === 'BR' ? computeBrazilBankRates('2026-10-13') : computeBankRates('2026-10-13')
+    selectedCountry === 'BR' ? computeBrazilBankRates(todayAR()) : computeBankRates(todayAR())
   );
   const [topics, setTopics] = useState<EconomicTopic[]>(() =>
     selectedCountry === 'BR' ? BRAZIL_ECONOMIC_TOPICS : ECONOMIC_TOPICS
@@ -299,7 +300,7 @@ export default function App() {
 
     const newVars = newCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES;
     const newTopicsList = newCountry === 'BR' ? BRAZIL_ECONOMIC_TOPICS : ECONOMIC_TOPICS;
-    const newRates = newCountry === 'BR' ? computeBrazilBankRates('2026-10-13') : computeBankRates('2026-10-13');
+    const newRates = newCountry === 'BR' ? computeBrazilBankRates(todayAR()) : computeBankRates(todayAR());
 
     setVariables(newVars);
     setTopics(newTopicsList);
@@ -453,9 +454,9 @@ export default function App() {
         const data = await res.json();
         if (data.variables && selectedCountry === 'AR') setVariables(data.variables);
         if (selectedCountry === 'BR') {
-          setBankRates(computeBrazilBankRates('2026-10-13'));
+          setBankRates(computeBrazilBankRates(todayAR()));
         } else {
-          setBankRates(computeBankRates('2026-10-13'));
+          setBankRates(computeBankRates(todayAR()));
         }
         setAutoSyncCountdown(300);
         setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -515,8 +516,8 @@ export default function App() {
         body: JSON.stringify({
           message: textToSend,
           previousMessages: chatMessages.slice(-6).map(m => ({
-            role: m.sender === 'user' ? 'user' : 'model',
-            parts: [{ text: m.text }]
+            sender: m.sender,
+            text: m.text
           }))
         })
       });
@@ -528,17 +529,22 @@ export default function App() {
           {
             id: `a_${Date.now()}`,
             sender: 'assistant',
-            text: data.reply,
+            text: data.text || 'No se pudo recuperar una respuesta.',
             timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
           }
         ]);
       } else {
+        let errText = 'Información oficial temporalmente no disponible.';
+        try {
+          const errData = await res.json();
+          if (typeof errData?.text === 'string' && errData.text) errText = errData.text;
+        } catch {}
         setChatMessages(prev => [
           ...prev,
           {
             id: `a_${Date.now()}`,
             sender: 'assistant',
-            text: 'Información oficial temporalmente no disponible.',
+            text: errText,
             timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
           }
         ]);
@@ -633,7 +639,9 @@ export default function App() {
   const chartData = useMemo(() => {
     if (!activeVar || !activeVar.history || activeVar.history.length === 0) return [];
 
-    const refDate = new Date('2026-10-13T12:00:00Z');
+    // La referencia es el último dato disponible de la variable, no una fecha fija
+    const lastDate = activeVar.history[activeVar.history.length - 1].date.slice(0, 10);
+    const refDate = new Date(`${lastDate}T12:00:00Z`);
     let daysToSubtract = 90;
     if (chartRange === '30D') daysToSubtract = 30;
     else if (chartRange === '90D') daysToSubtract = 90;
@@ -644,7 +652,7 @@ export default function App() {
     cutoffDate.setDate(refDate.getDate() - daysToSubtract);
     const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
-    const filtered = activeVar.history.filter(point => point.date >= cutoffStr && point.date <= '2026-10-13');
+    const filtered = activeVar.history.filter(point => point.date >= cutoffStr && point.date <= lastDate);
 
     if (filtered.length <= 1) {
       return activeVar.history.slice(-Math.min(activeVar.history.length, 30));
