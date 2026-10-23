@@ -171,6 +171,50 @@ export async function fetchIndec(): Promise<LiveValue[]> {
   return out;
 }
 
+/* ---------------------- RIPTE (Series de Tiempo) ---------------------- */
+// El id de la serie se descubre con el buscador de la API (no se fija a mano) y se recuerda en memoria.
+
+const seriesIdCache = new Map<string, string>();
+
+async function discoverSeries(query: string, accept: (text: string) => boolean): Promise<string> {
+  const cached = seriesIdCache.get(query);
+  if (cached) return cached;
+  const j = await getJson(`https://apis.datos.gob.ar/series/api/search/?q=${encodeURIComponent(query)}&limit=30`);
+  const items: any[] = Array.isArray(j?.data) ? j.data : [];
+  for (const it of items) {
+    const f = it?.field;
+    if (!f?.id) continue;
+    const freq = String(f.frequency ?? '');
+    if (freq && !freq.includes('P1M')) continue; // solo series mensuales
+    const text = normalize(`${f.title ?? ''} ${f.description ?? ''}`);
+    if (accept(text)) {
+      seriesIdCache.set(query, String(f.id));
+      return String(f.id);
+    }
+  }
+  throw new Error(`Series de Tiempo: no se encontró una serie para "${query}"`);
+}
+
+export function ripteFromRows(rows: { date: string; value: number }[]): LiveValue | null {
+  const valid = rows.filter(r => r.value > 100_000 && r.value < 100_000_000); // nivel en pesos, no índice
+  const last = valid[valid.length - 1];
+  if (!last || valid.length < 2) return null;
+  return {
+    id: 'ripte_salario_estable', value: Number(last.value.toFixed(2)), date: last.date.slice(0, 10), tol: null,
+    history: valid.length >= 3 ? valid.map(r => ({ date: r.date.slice(0, 10), value: Number(r.value.toFixed(2)) })) : undefined
+  };
+}
+
+export async function fetchRipte(): Promise<LiveValue[]> {
+  const id = await discoverSeries('ripte', t =>
+    (t.includes('ripte') || t.includes('remuneracion imponible promedio')) &&
+    !/(indice|base|decreciente|variacion|var\.)/.test(t)
+  );
+  const v = ripteFromRows(await fetchSeries(id, 25));
+  if (!v) throw new Error('RIPTE: la serie encontrada no tiene el formato esperado');
+  return [v];
+}
+
 /* ------------------------------ BNA ------------------------------ */
 
 const toNum = (s: string) => Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s);

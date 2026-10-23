@@ -7,7 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { ARGENTINA_ECONOMIC_VARIABLES, ECONOMIC_TOPICS } from "./src/data";
 import { BRAZIL_ECONOMIC_VARIABLES, BRAZIL_ECONOMIC_TOPICS } from "./src/brazilData";
 import { syncVariablesToCurrentDate, todayAR } from "./src/dailySync";
-import { fetchBcra, fetchBna, fetchDolarApi, fetchIndec, LiveValue } from "./src/liveSources";
+import { fetchBcra, fetchBna, fetchDolarApi, fetchIndec, fetchRipte, LiveValue } from "./src/liveSources";
 import { EconomicVariable } from "./src/types";
 import { computeBankRates, computeBrazilBankRates } from "./src/fixedTermData";
 
@@ -37,7 +37,7 @@ function getGeminiClient() {
 let variablesStore: EconomicVariable[] = [...ARGENTINA_ECONOMIC_VARIABLES];
 let lastSyncTimestamp = new Date().toISOString();
 
-type SourceName = "bna" | "dolarapi" | "bcra" | "indec";
+type SourceName = "bna" | "dolarapi" | "bcra" | "indec" | "ripte";
 interface SourceState { lastAttempt: number; lastSuccess: string | null; lastError: string | null; updated: number; }
 
 // Frecuencia mínima de consulta por fuente: cotizaciones 5 min, BCRA 30 min, INDEC 6 h
@@ -46,12 +46,14 @@ const SOURCE_TTL_MS: Record<SourceName, number> = {
   dolarapi: 5 * 60 * 1000,
   bcra: 30 * 60 * 1000,
   indec: 6 * 60 * 60 * 1000,
+  ripte: 6 * 60 * 60 * 1000,
 };
 const sourceState: Record<SourceName, SourceState> = {
   bna: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
   dolarapi: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
   bcra: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
   indec: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
+  ripte: { lastAttempt: 0, lastSuccess: null, lastError: null, updated: 0 },
 };
 const inFlight = new Set<SourceName>();
 
@@ -103,6 +105,7 @@ async function refreshSource(name: SourceName, force = false): Promise<void> {
     if (name === "bna") values = await fetchBna(today);
     else if (name === "bcra") values = await fetchBcra(today);
     else if (name === "indec") values = await fetchIndec();
+    else if (name === "ripte") values = await fetchRipte();
     else {
       // Si el BNA respondió hace poco, su cotización oficial tiene prioridad sobre la de DolarApi
       const bnaFresh = sourceState.bna.lastSuccess && now - Date.parse(sourceState.bna.lastSuccess) < 15 * 60 * 1000;
@@ -124,13 +127,36 @@ async function refreshSource(name: SourceName, force = false): Promise<void> {
   }
 }
 
-async function refreshAll(force = false): Promise<void> {
-  // El BNA va primero para poder darle prioridad sobre DolarApi
-  await refreshSource("bna", force);
-  await Promise.allSettled([
-    refreshSource("dolarapi", force),
-    refreshSource("bcra", force),
-    refreshSource("indec", force),
+let refreshPromise: Promise<void> | null = null;
+
+/** Un solo refresco a la vez: las consultas simultáneas comparten la misma promesa. */
+function refreshAll(force = false): Promise<void> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    // El BNA va primero para poder darle prioridad sobre DolarApi
+    await refreshSource("bna", force);
+    await Promise.allSettled([
+      refreshSource("dolarapi", force),
+      refreshSource("bcra", force),
+      refreshSource("indec", force),
+      refreshSource("ripte", force),
+    ]);
+  })().finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
+
+/**
+ * Antes de responder, si alguna fuente venció su intervalo (o el servidor recién arrancó),
+ * se refresca y se espera hasta `maxWaitMs`. Así los datos se actualizan aunque el hosting
+ * duerma el servidor entre visitas y los temporizadores no corran.
+ */
+async function ensureFresh(maxWaitMs = 8000): Promise<void> {
+  const now = Date.now();
+  const stale = (Object.keys(sourceState) as SourceName[]).some(n => now - sourceState[n].lastAttempt >= SOURCE_TTL_MS[n]);
+  if (!stale && !refreshPromise) return;
+  await Promise.race([
+    refreshAll().catch(() => {}),
+    new Promise<void>(resolve => setTimeout(resolve, maxWaitMs)),
   ]);
 }
 
@@ -238,12 +264,12 @@ async function startServer() {
   });
 
   // API 2: List all economic variables (always ensures daily sync is up-to-date)
-  app.get("/api/variables", (req, res) => {
+  app.get("/api/variables", async (req, res) => {
     const country = (req.query.country as string)?.toUpperCase();
     if (country === 'BR') {
       return res.json(BRAZIL_ECONOMIC_VARIABLES);
     }
-    refreshAll().catch(() => {}); // cada fuente respeta su intervalo mínimo
+    await ensureFresh(); // refresca las fuentes vencidas antes de responder (máx. 8 s)
     res.json(variablesStore);
   });
 

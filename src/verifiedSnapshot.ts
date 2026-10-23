@@ -82,6 +82,15 @@ export const VERIFIED_SNAPSHOT: Record<string, Entry> = {
     points: [{ date: '2026-09-01', value: 738690 }],
     note: 'CBA familia tipo, septiembre 2026'
   },
+  ripte_salario_estable: {
+    value: 1915878.76, date: '2026-06-01',
+    points: [
+      { date: '2025-12-01', value: 1633547 },
+      { date: '2026-03-01', value: 1775664.12 },
+      { date: '2026-06-01', value: 1915878.76 }
+    ],
+    note: 'RIPTE junio 2026 (último verificado)'
+  },
   ipim_mayorista_indec: {
     value: 3.2, date: '2026-09-01',
     points: [{ date: '2026-09-01', value: 3.2 }],

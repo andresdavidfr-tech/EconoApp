@@ -23,6 +23,11 @@ globalThis.fetch = async (input, init) => {
     return json({ data: Array.from({ length: 25 }, (_, i) => { const d = new Date(Date.UTC(2024, 8 + i, 1)); return [d.toISOString().slice(0, 10), Number((8000 * Math.pow(1.024, i)).toFixed(2))]; }) });
   if (url.includes('apis.datos.gob.ar') && url.includes('143.3_NO_PR_2004_A_21'))
     return json({ data: Array.from({ length: 37 }, (_, i) => { const d = new Date(Date.UTC(2023, 8 + i, 1)); return [d.toISOString().slice(0, 10), Number((150 + i * 0.6).toFixed(2))]; }) });
+  if (url.includes('apis.datos.gob.ar/series/api/search/')) return json({ data: [
+    { field: { id: '158.1_RIPTE_INDICE', title: 'RIPTE índice base 1994', description: 'Índice RIPTE base 1994=100', frequency: 'R/P1M' } },
+    { field: { id: '158.1_REPTE_0_0_5', title: 'RIPTE', description: 'Remuneración imponible promedio de los trabajadores estables (RIPTE)', frequency: 'R/P1M' } } ] });
+  if (url.includes('apis.datos.gob.ar') && url.includes('158.1_REPTE_0_0_5'))
+    return json({ data: Array.from({ length: 25 }, (_, i) => { const d = new Date(Date.UTC(2024, 7 + i, 1)); return [d.toISOString().slice(0, 10), Number((1000000 + i * 40000).toFixed(2))]; }) });
   if (url.includes('bna.com.ar/Cotizador/Monedasv2'))
     return html('<table><tr><td class="tit">Dolar U.S.A</td><td>1.520,00</td><td>1.570,00</td></tr></table>');
   if (url.includes('bna.com.ar/Cotizador/Divisasv2'))
