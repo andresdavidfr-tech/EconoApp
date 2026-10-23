@@ -1,5 +1,5 @@
 import { EconomicVariable, EconomicTopic } from './types';
-import { applyVerifiedSnapshot } from './verifiedSnapshot';
+import { getArgentinaTodayDate } from './dailySync';
 
 interface Milestone {
   date: string;
@@ -7,7 +7,7 @@ interface Milestone {
 }
 
 /**
- * Genera una serie histórica coherente y rigurosa con corte al 13-10-2026.
+ * Genera una serie histórica coherente y rigurosa con corte dinámico al día de hoy.
  * Para frecuencias diarias: genera datos día por día para los últimos 90 días (30D y 90D en alta resolución)
  * e intercala los hitos de 1 y 3 años para que los gráficos de 1Y y 3Y muestren la tendencia macroeconómica real.
  */
@@ -25,11 +25,15 @@ export function createHistoricalSeries(
     }));
   }
 
-  const cutoff90d = '2026-07-15';
-  const historicalPre90 = sorted.filter(m => m.date < cutoff90d);
+  const todayStr = getArgentinaTodayDate();
+  const baseEndDate = new Date();
+  baseEndDate.setHours(12, 0, 0, 0);
 
-  // Generación diaria de los últimos 90 días (del 15-07-2026 al 13-10-2026)
-  const baseEndDate = new Date('2026-10-13T12:00:00Z');
+  const cutoff90Date = new Date(baseEndDate);
+  cutoff90Date.setDate(cutoff90Date.getDate() - 90);
+  const cutoff90d = cutoff90Date.toISOString().split('T')[0];
+
+  const historicalPre90 = sorted.filter(m => m.date < cutoff90d);
   const daysTotal = 90;
   const lastVal = sorted[sorted.length - 1].value;
   const startMilestone = sorted.slice().reverse().find(m => m.date <= cutoff90d) || sorted[0];
@@ -128,7 +132,7 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
     accentColor: 'orange',
     imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Curvas telemétricas de dispersión de precios y canastas del INDEC',
-    visualSummary: 'IPC 2,7% · CBT $986.586 · REM 2,9%',
+    visualSummary: 'IPC 1,9% m/m · Interanual 33,4% · REM 2,1%',
     country: 'AR',
     sources: [
       {
@@ -326,7 +330,7 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
  * 29 Variables Económicas Oficiales y de Cámaras Sectoriales de Argentina.
  * Serie histórica rigurosa de 3 años relevada directamente de fuentes primarias (BCRA, BNA, INDEC, BYMA, CIARA-CEC, CAC, ADEFA, CAMMESA, CAME, ARCA, Colegio de Escribanos).
  */
-const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
+export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
   // ==========================================
   // TEMA 1: MERCADO CAMBIARIO Y DIVISAS
   // ==========================================
@@ -605,13 +609,13 @@ const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'precios_inflacion',
     sourceType: 'publica',
     country: 'AR',
-    value: 2.7,
+    value: 1.9,
     unit: '% mensual',
     frequency: 'Mensual',
     source: 'INDEC',
     sourceUrl: 'https://www.indec.gob.ar',
-    description: 'Variación mensual del IPC nacional publicada oficialmente por el INDEC (2,7% mensual en octubre, con fuerte desaceleración respecto al 25,5% de diciembre 2023).',
-    lastUpdated: '2026-10-13',
+    description: 'Variación mensual del IPC nacional publicada oficialmente por el INDEC (1,9% mensual con interanual de 33,4%).',
+    lastUpdated: '2026-10-15',
     history: [
       { date: '2023-10-01', value: 8.3 },
       { date: '2023-11-01', value: 12.8 },
@@ -626,14 +630,15 @@ const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
       { date: '2024-08-01', value: 4.2 },
       { date: '2024-09-01', value: 3.5 },
       { date: '2024-10-01', value: 2.7 },
-      { date: '2025-01-01', value: 2.5 },
       { date: '2025-06-01', value: 2.4 },
-      { date: '2026-01-01', value: 2.5 },
-      { date: '2026-06-01', value: 2.6 },
-      { date: '2026-07-01', value: 2.6 },
-      { date: '2026-08-01', value: 2.7 },
-      { date: '2026-09-01', value: 2.7 },
-      { date: '2026-10-01', value: 2.7 }
+      { date: '2026-01-01', value: 2.9 },
+      { date: '2026-03-31', value: 3.4 },
+      { date: '2026-04-30', value: 2.6 },
+      { date: '2026-05-31', value: 2.1 },
+      { date: '2026-06-30', value: 1.9 },
+      { date: '2026-07-31', value: 2.1 },
+      { date: '2026-08-31', value: 1.7 },
+      { date: '2026-09-30', value: 1.9 }
     ]
   },
   {
@@ -643,13 +648,13 @@ const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'precios_inflacion',
     sourceType: 'publica',
     country: 'AR',
-    value: 2.9,
+    value: 2.1,
     unit: '% mensual',
     frequency: 'Mensual',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Dato oficial publicado por el BCRA en su Relevamiento de Expectativas de Mercado (REM). Los participantes del mercado proyectaron una inflación mensual mediana de 2,9%.',
-    lastUpdated: '2026-10-13',
+    description: 'Dato oficial publicado por el BCRA en su Relevamiento de Expectativas de Mercado (REM). Los analistas del mercado proyectaron una inflación mensual mediana de 2,1%.',
+    lastUpdated: '2026-10-15',
     history: [
       { date: '2023-10-01', value: 12.5 },
       { date: '2023-11-01', value: 11.5 },
@@ -665,10 +670,11 @@ const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
       { date: '2024-09-01', value: 3.4 },
       { date: '2024-10-01', value: 2.9 },
       { date: '2025-06-01', value: 2.8 },
-      { date: '2026-06-01', value: 2.8 },
-      { date: '2026-08-01', value: 2.9 },
-      { date: '2026-09-01', value: 2.9 },
-      { date: '2026-10-01', value: 2.9 }
+      { date: '2026-01-01', value: 2.6 },
+      { date: '2026-06-01', value: 2.3 },
+      { date: '2026-07-01', value: 2.2 },
+      { date: '2026-08-01', value: 2.0 },
+      { date: '2026-09-01', value: 2.1 }
     ]
   },
   {
@@ -1262,6 +1268,3 @@ const RAW_ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     ]
   }
 ];
-
-// Los valores cargados a mano se corrigen con la última verificación contra fuentes públicas
-export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = applyVerifiedSnapshot(RAW_ARGENTINA_ECONOMIC_VARIABLES);

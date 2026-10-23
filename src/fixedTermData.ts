@@ -1,4 +1,5 @@
 import { BankFixedTermRate } from './types';
+import { getArgentinaTodayDate } from './dailySync';
 
 // Tasas oficiales extraídas de la Tabla Comparativa del BCRA (Régimen de Transparencia de Plazos Fijos para Personas Humanas)
 export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
@@ -181,7 +182,7 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
 ];
 
 export function computeBankRates(todayStr?: string): BankFixedTermRate[] {
-  const date = todayStr || '2026-10-13';
+  const date = todayStr || getArgentinaTodayDate();
   return INITIAL_BANK_RATES.map(b => {
     // Rendimiento mensual a 30 días: TEM = (TNA * 30) / 365
     const tem = parseFloat(((b.tna * 30) / 365).toFixed(2));
@@ -334,7 +335,7 @@ export const INITIAL_BRAZIL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[]
 ];
 
 export function computeBrazilBankRates(todayStr?: string): BankFixedTermRate[] {
-  const date = todayStr || '2026-10-13';
+  const date = todayStr || getArgentinaTodayDate();
   return INITIAL_BRAZIL_BANK_RATES.map(b => {
     // Rendimento mensal: TEM = (TNA * 30) / 365
     const tem = parseFloat(((b.tna * 30) / 365).toFixed(2));

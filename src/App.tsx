@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   RefreshCw,
   Search,
   ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
-  Sparkles,
   Check,
   Landmark,
   TrendingUp,
@@ -20,7 +19,8 @@ import {
   CheckCircle2,
   X,
   SlidersHorizontal,
-  BookOpen
+  BookOpen,
+  Download
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -34,7 +34,6 @@ import {
 import {
   CountryCode,
   EconomicVariable,
-  ChatMessage,
   BankFixedTermRate,
   TopicId,
   EconomicTopic
@@ -46,11 +45,13 @@ import {
   BRAZIL_OFFICIAL_QUOTES
 } from './brazilData';
 import { computeBankRates, computeBrazilBankRates } from './fixedTermData';
-import { todayAR } from './dailySync';
+import { getArgentinaTodayDate, formatToDayMonthYear, syncVariablesToCurrentDate } from './dailySync';
 import { ArgentinaFlag, BrazilFlag } from './components/FlagIcons';
 import { TopicTechVisualizer } from './components/TopicTechVisualizer';
+import { exportVariableHistoryToCsv } from './utils/csvExport';
+import { getVariableImage } from './variableImages';
 
-type Tab = 'temas' | 'cotizaciones' | 'plazo_fijo' | 'tendencias' | 'fuentes' | 'asesor';
+type Tab = 'temas' | 'cotizaciones' | 'plazo_fijo' | 'tendencias' | 'fuentes';
 
 // ============================================================================
 // Modern Logo Component with Country Flag Display & Switcher
@@ -268,6 +269,73 @@ function getTopicWarmBadge(topicId: TopicId) {
   }
 }
 
+/**
+ * Proporciona el enfoque humano y preguntas directas de interés ciudadano para cada tema.
+ * Orientado al usuario que ingresa para entender la realidad económica antes de ver números.
+ */
+function getTopicHumanInfo(topicId: TopicId, country: CountryCode) {
+  if (country === 'BR') {
+    switch (topicId) {
+      case 'precios_inflacion':
+        return {
+          question: 'Qual o impacto da inflação no custo de vida?',
+          summary: 'Acompanhe o IPCA oficial apurado pelo IBGE e o IGP-M da FGV para entender o poder de compra do Real e os reajustes de contratos.'
+        };
+      case 'cambiario_divisas':
+        return {
+          question: 'Como estão as cotações do Dólar e moedas?',
+          summary: 'Cotações oficiais PTAX do Banco Central do Brasil, Dólar Turismo e o nível das reservas internacionais em moeda estrangeira.'
+        };
+      case 'tasas_ahorro':
+        return {
+          question: 'Quanto rendem a poupança e a renda fixa?',
+          summary: 'Taxa básica Selic fixada pelo Copom/BCB e taxa DI (CDI da B3) para rendimento de CDBs, Tesouro Direto e depósitos bancários.'
+        };
+      case 'actividad_industria':
+        return {
+          question: 'Como avança a atividade produtiva e a indústria?',
+          summary: 'Pesquisa Industrial Mensal (PIM-PF) do IBGE, montagem de autoveículos da ANFAVEA e consumo nacional de energia elétrica.'
+        };
+      case 'credito_salarios':
+      default:
+        return {
+          question: 'Como estão o crédito bancário e o emprego?',
+          summary: 'Volume total de concessão de crédito do Sistema Financeiro Nacional divulgado pelo BCB e evolução do emprego formal.'
+        };
+    }
+  }
+
+  // Argentina
+  switch (topicId) {
+    case 'precios_inflacion':
+      return {
+        question: '¿Cómo evolucionan los precios y el costo de vida?',
+        summary: 'Seguí el ritmo del IPC nacional, las canastas básicas de consumo (CBA y CBT) y la inflación mayorista informadas por el INDEC.'
+      };
+    case 'cambiario_divisas':
+      return {
+        question: '¿A cuánto cotizan el dólar y las divisas oficiales?',
+        summary: 'Cotizaciones minoristas y mayoristas del Banco Nación (BNA), paridades bursátiles de BYMA y reservas internacionales del BCRA.'
+      };
+    case 'tasas_ahorro':
+      return {
+        question: '¿Qué rinde tu dinero en depósitos y plazos fijos?',
+        summary: 'Tasa de política monetaria del BCRA, tasa BADLAR de bancos privados y comparador de rendimientos de plazos fijos a 30 días.'
+      };
+    case 'actividad_industria':
+      return {
+        question: '¿Cómo marchan la producción y la economía real?',
+        summary: 'Índice de producción industrial manufacturero (IPI INDEC), despachos de cemento para la construcción y fabricación automotriz.'
+      };
+    case 'credito_salarios':
+    default:
+      return {
+        question: '¿Cómo acompañan los sueldos y el crédito bancario?',
+        summary: 'Evolución del salario formal registrado (RIPTE) frente a los precios y financiamiento bancario al sector privado.'
+      };
+  }
+}
+
 export default function App() {
   // --- Country Selection State (defaults to AR or persisted) ---
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
@@ -279,12 +347,13 @@ export default function App() {
     }
   });
 
-  // --- Data State (dynamically initialized by country) ---
-  const [variables, setVariables] = useState<EconomicVariable[]>(() =>
-    selectedCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES
-  );
+  // --- Data State (dynamically initialized by country, synced to current date) ---
+  const [variables, setVariables] = useState<EconomicVariable[]>(() => {
+    const base = selectedCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES;
+    return syncVariablesToCurrentDate(base).updatedVariables;
+  });
   const [bankRates, setBankRates] = useState<BankFixedTermRate[]>(() =>
-    selectedCountry === 'BR' ? computeBrazilBankRates(todayAR()) : computeBankRates(todayAR())
+    selectedCountry === 'BR' ? computeBrazilBankRates() : computeBankRates()
   );
   const [topics, setTopics] = useState<EconomicTopic[]>(() =>
     selectedCountry === 'BR' ? BRAZIL_ECONOMIC_TOPICS : ECONOMIC_TOPICS
@@ -298,9 +367,10 @@ export default function App() {
       localStorage.setItem('econo_country', newCountry);
     } catch {}
 
-    const newVars = newCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES;
+    const rawVars = newCountry === 'BR' ? BRAZIL_ECONOMIC_VARIABLES : ARGENTINA_ECONOMIC_VARIABLES;
+    const newVars = syncVariablesToCurrentDate(rawVars).updatedVariables;
     const newTopicsList = newCountry === 'BR' ? BRAZIL_ECONOMIC_TOPICS : ECONOMIC_TOPICS;
-    const newRates = newCountry === 'BR' ? computeBrazilBankRates(todayAR()) : computeBankRates(todayAR());
+    const newRates = newCountry === 'BR' ? computeBrazilBankRates() : computeBankRates();
 
     setVariables(newVars);
     setTopics(newTopicsList);
@@ -366,18 +436,11 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-  // Auto-Update Engine State (Revisión automática cada 5 minutos)
+  // Auto-Update Engine State (Revisión automática en segundo plano cada 5 minutos)
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [autoSyncCountdown, setAutoSyncCountdown] = useState<number>(300); // 300 segundos = 5 minutos
   const [lastVerifiedTime, setLastVerifiedTime] = useState<string>(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   );
-
-  const formatCountdown = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
 
   // Toast
   const [toast, setToast] = useState<string | null>(null);
@@ -385,19 +448,6 @@ export default function App() {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
-
-  // Chat State
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      sender: 'assistant',
-      text: 'Bienvenido a Econoapp. Consultá cotizaciones oficiales del BNA, tasas de plazo fijo y variables macroeconómicas conectadas por temas de interés, verificadas con fuentes públicas y cámaras sectoriales al 13-10-2026.',
-      timestamp: '13-10-2026'
-    }
-  ]);
-  const [chatInput, setChatInput] = useState<string>('');
-  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
-  const chatBottomRef = useRef<HTMLDivElement>(null);
 
   // Save topic preferences
   const toggleTopicInterest = (topicId: TopicId) => {
@@ -454,115 +504,31 @@ export default function App() {
         const data = await res.json();
         if (data.variables && selectedCountry === 'AR') setVariables(data.variables);
         if (selectedCountry === 'BR') {
-          setBankRates(computeBrazilBankRates(todayAR()));
+          setBankRates(computeBrazilBankRates());
         } else {
-          setBankRates(computeBankRates(todayAR()));
+          setBankRates(computeBankRates());
         }
-        setAutoSyncCountdown(300);
         setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         triggerToast('Revisión completada: datos al día con fuentes oficiales');
       }
     } catch {
       await loadData(true);
-      setAutoSyncCountdown(300);
       setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // Revisión automática de la plataforma cada 5 minutos (300s)
+  // Revisión automática de la plataforma en segundo plano cada 5 minutos
   useEffect(() => {
     loadData();
     const interval = setInterval(() => {
-      setAutoSyncCountdown(prev => {
-        if (prev <= 1) {
-          loadData(true);
-          setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-          return 300;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      loadData(true);
+      setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [selectedCountry]);
-
-  useEffect(() => {
-    if (activeTab === 'asesor') {
-      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages, activeTab]);
-
-  const handleSendChatMessage = async (presetText?: string) => {
-    const textToSend = presetText || chatInput;
-    if (!textToSend.trim() || isChatLoading) return;
-
-    const userMsg: ChatMessage = {
-      id: `u_${Date.now()}`,
-      sender: 'user',
-      text: textToSend,
-      timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setChatMessages(prev => [...prev, userMsg]);
-    if (!presetText) setChatInput('');
-    setIsChatLoading(true);
-
-    try {
-      const res = await fetch('/api/gemini/advisor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: textToSend,
-          previousMessages: chatMessages.slice(-6).map(m => ({
-            sender: m.sender,
-            text: m.text
-          }))
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setChatMessages(prev => [
-          ...prev,
-          {
-            id: `a_${Date.now()}`,
-            sender: 'assistant',
-            text: data.text || 'No se pudo recuperar una respuesta.',
-            timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
-      } else {
-        let errText = 'Información oficial temporalmente no disponible.';
-        try {
-          const errData = await res.json();
-          if (typeof errData?.text === 'string' && errData.text) errText = errData.text;
-        } catch {}
-        setChatMessages(prev => [
-          ...prev,
-          {
-            id: `a_${Date.now()}`,
-            sender: 'assistant',
-            text: errText,
-            timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
-      }
-    } catch {
-      setChatMessages(prev => [
-        ...prev,
-        {
-          id: `a_${Date.now()}`,
-          sender: 'assistant',
-          text: 'Error de red al procesar la respuesta.',
-          timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
-    } finally {
-      setIsChatLoading(false);
-    }
-  };
 
   // Currency & numbers formatting
   const formatCurrency = (val: number, decimals = 2) => {
@@ -639,9 +605,8 @@ export default function App() {
   const chartData = useMemo(() => {
     if (!activeVar || !activeVar.history || activeVar.history.length === 0) return [];
 
-    // La referencia es el último dato disponible de la variable, no una fecha fija
-    const lastDate = activeVar.history[activeVar.history.length - 1].date.slice(0, 10);
-    const refDate = new Date(`${lastDate}T12:00:00Z`);
+    const todayStr = getArgentinaTodayDate();
+    const refDate = new Date();
     let daysToSubtract = 90;
     if (chartRange === '30D') daysToSubtract = 30;
     else if (chartRange === '90D') daysToSubtract = 90;
@@ -652,7 +617,7 @@ export default function App() {
     cutoffDate.setDate(refDate.getDate() - daysToSubtract);
     const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
-    const filtered = activeVar.history.filter(point => point.date >= cutoffStr && point.date <= lastDate);
+    const filtered = activeVar.history.filter(point => point.date >= cutoffStr && point.date <= todayStr);
 
     if (filtered.length <= 1) {
       return activeVar.history.slice(-Math.min(activeVar.history.length, 30));
@@ -735,18 +700,18 @@ export default function App() {
   }, [topics, selectedTopicFilter, userInterestTopicIds]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#edf3fa] via-[#f1f6fc] to-[#e8f0fa] text-slate-900 selection:bg-blue-900 selection:text-white pb-24 md:pb-16 font-sans">
+    <div className="min-h-screen bg-slate-50/70 text-slate-900 selection:bg-blue-600 selection:text-white pb-24 md:pb-16 font-sans">
       
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#0a192f] text-blue-100 text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border border-blue-800/40 animate-in fade-in duration-200">
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs px-4 py-2 rounded-full shadow-lg flex items-center gap-2 border border-slate-700 animate-in fade-in duration-200">
           <Check className="size-3.5 text-blue-400" />
           <span>{toast}</span>
         </div>
       )}
 
       {/* Top Bar with Modern Econoapp Logo */}
-      <header className="sticky top-0 z-30 bg-[#edf3fa]/90 backdrop-blur-md border-b border-blue-900/10">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/80">
         <div className="max-w-5xl mx-auto px-4 h-15 flex items-center justify-between gap-6">
           
           {/* Zone 1: Modern Econoapp Logo with Country Flag and Switcher */}
@@ -757,13 +722,13 @@ export default function App() {
           />
 
           {/* Zone 2: Navigation Links (Clean single-line text) */}
-          <nav className="hidden md:flex items-center gap-4 text-xs font-medium text-slate-600">
+          <nav className="hidden md:flex items-center gap-1.5 text-xs font-medium text-slate-600">
             <button
               onClick={() => setActiveTab('temas')}
-              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap px-2.5 py-1 rounded-lg ${
+              className={`flex items-center gap-1.5 transition-colors whitespace-nowrap px-3 py-1.5 rounded-lg ${
                 activeTab === 'temas'
-                  ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30'
-                  : 'hover:text-slate-950 hover:bg-blue-100/50'
+                  ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                  : 'hover:text-slate-950 hover:bg-slate-100'
               }`}
             >
               <Layers className="size-3.5" />
@@ -771,63 +736,54 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('cotizaciones')}
-              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
-                activeTab === 'cotizaciones' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
+              className={`transition-colors whitespace-nowrap px-3 py-1.5 rounded-lg ${
+                activeTab === 'cotizaciones' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'hover:text-slate-950 hover:bg-slate-100'
               }`}
             >
               {selectedCountry === 'BR' ? 'Cotações' : 'Cotizaciones'}
             </button>
             <button
               onClick={() => setActiveTab('plazo_fijo')}
-              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
-                activeTab === 'plazo_fijo' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
+              className={`transition-colors whitespace-nowrap px-3 py-1.5 rounded-lg ${
+                activeTab === 'plazo_fijo' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'hover:text-slate-950 hover:bg-slate-100'
               }`}
             >
               {selectedCountry === 'BR' ? 'CDB' : 'Plazo Fijo'}
             </button>
             <button
               onClick={() => setActiveTab('tendencias')}
-              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
-                activeTab === 'tendencias' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
+              className={`transition-colors whitespace-nowrap px-3 py-1.5 rounded-lg ${
+                activeTab === 'tendencias' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'hover:text-slate-950 hover:bg-slate-100'
               }`}
             >
               {selectedCountry === 'BR' ? 'Tendências' : 'Tendencias'}
             </button>
             <button
               onClick={() => setActiveTab('fuentes')}
-              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
-                activeTab === 'fuentes' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
+              className={`transition-colors whitespace-nowrap px-3 py-1.5 rounded-lg ${
+                activeTab === 'fuentes' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'hover:text-slate-950 hover:bg-slate-100'
               }`}
             >
               {selectedCountry === 'BR' ? 'Fontes' : 'Fuentes'}
             </button>
-            <button
-              onClick={() => setActiveTab('asesor')}
-              className={`transition-colors whitespace-nowrap px-2 py-1 rounded-lg ${
-                activeTab === 'asesor' ? 'bg-[#0f274a] text-blue-100 font-semibold shadow-xs ring-1 ring-blue-500/30' : 'hover:text-slate-950 hover:bg-blue-100/50'
-              }`}
-            >
-              {selectedCountry === 'BR' ? 'Consultor' : 'Asesor'}
-            </button>
           </nav>
 
-          {/* Zone 3: Date, Auto-Review (5m) & Manual Sync */}
+          {/* Zone 3: Date, Auto-Review & Manual Sync */}
           <div className="flex items-center gap-2 shrink-0">
             <span
-              className="inline-flex items-center gap-1.5 text-xs text-blue-950 font-mono px-2 py-1 bg-blue-100/80 rounded-md border border-blue-200/90"
-              title={`Revisión automática cada 5 minutos. Próxima en ${formatCountdown(autoSyncCountdown)} (última: ${lastVerifiedTime})`}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-700 font-mono px-2.5 py-1 bg-slate-100/90 rounded-md border border-slate-200"
+              title={`Revisión en segundo plano cada 5 minutos (última: ${lastVerifiedTime})`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              <span className="hidden sm:inline">Auto-revisión 5m</span>
-              <span className="font-semibold tabular-nums text-blue-900">{formatCountdown(autoSyncCountdown)}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-medium text-slate-700">Al día ({lastVerifiedTime})</span>
             </span>
             <button
               onClick={handleManualSync}
               disabled={isSyncing}
-              className="h-8.5 px-3 text-xs font-medium text-slate-800 bg-white hover:bg-blue-50 border border-blue-200/80 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 disabled:opacity-60 shadow-xs"
+              className="h-8 px-3 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 disabled:opacity-60 shadow-2xs"
               title="Revisar ahora con fuentes oficiales"
             >
-              <RefreshCw className={`size-3 text-slate-500 ${isSyncing ? 'animate-spin text-blue-700' : ''}`} />
+              <RefreshCw className={`size-3 text-slate-500 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
               <span className="hidden xs:inline">{isSyncing ? 'Revisando' : 'Revisar'}</span>
             </button>
           </div>
@@ -838,11 +794,11 @@ export default function App() {
       <main className="max-w-5xl mx-auto px-4 pt-6 space-y-6">
 
         {/* Mobile Tab Switcher */}
-        <div className="md:hidden flex p-1 bg-blue-100/70 rounded-xl gap-1 text-xs font-medium overflow-x-auto scrollbar-none border border-blue-200/60">
+        <div className="md:hidden flex p-1 bg-slate-200/60 rounded-xl gap-1 text-xs font-medium overflow-x-auto scrollbar-none border border-slate-200/80">
           <button
             onClick={() => setActiveTab('temas')}
             className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'temas' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
+              activeTab === 'temas' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
             }`}
           >
             Temas
@@ -850,7 +806,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab('cotizaciones')}
             className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'cotizaciones' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
+              activeTab === 'cotizaciones' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
             }`}
           >
             {selectedCountry === 'BR' ? 'Cotações' : 'Cotizaciones'}
@@ -858,7 +814,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab('plazo_fijo')}
             className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'plazo_fijo' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
+              activeTab === 'plazo_fijo' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
             }`}
           >
             {selectedCountry === 'BR' ? 'CDB' : 'Plazos'}
@@ -866,7 +822,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab('tendencias')}
             className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'tendencias' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
+              activeTab === 'tendencias' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
             }`}
           >
             Gráficos
@@ -874,59 +830,46 @@ export default function App() {
           <button
             onClick={() => setActiveTab('fuentes')}
             className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'fuentes' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
+              activeTab === 'fuentes' ? 'bg-white text-slate-950 shadow-xs font-bold' : 'text-slate-600'
             }`}
           >
             Fuentes
           </button>
-          <button
-            onClick={() => setActiveTab('asesor')}
-            className={`flex-1 min-w-[85px] py-2 text-center rounded-lg transition-all ${
-              activeTab === 'asesor' ? 'bg-white text-slate-950 shadow-xs font-bold ring-1 ring-blue-300' : 'text-slate-600'
-            }`}
-          >
-            Asesor
-          </button>
         </div>
 
         {/* ============================================================ */}
-        {/* FIRST THING THE USER SEES: TEMAS DE INTERÉS (VISUAL & DATA-DRIVEN) */}
+        {/* TEMAS DE INTERÉS PRIMERO, DATOS DESPUÉS */}
         {/* ============================================================ */}
         {activeTab === 'temas' && (
           <div className="space-y-6">
 
-            {/* Anti-Bias & Data-Driven Header */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-white border border-blue-200/80 shadow-xs space-y-3">
+            {/* Visual & Numerical Control Bar (No text paragraphs) */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-xs font-mono text-blue-700 font-semibold tracking-wide">
-                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2 text-xs font-mono text-slate-800 font-bold tracking-wide">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span>
-                      {selectedCountry === 'BR'
-                        ? 'DADO PURO · BRASIL · 13-10-2026'
-                        : 'DATO PURO · ARGENTINA · 13-10-2026'}
+                      {selectedCountry === 'BR' ? 'MERCADO BRASIL' : 'MERCADO ARGENTINA'}
+                    </span>
+                    <span className="text-slate-300">·</span>
+                    <span className="text-slate-500 font-normal">
+                      {formatToDayMonthYear(getArgentinaTodayDate())}
                     </span>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950">
-                    {selectedCountry === 'BR' ? 'Temas Econômicos' : 'Temas Económicos'}
-                  </h1>
-                  <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed">
-                    {selectedCountry === 'BR'
-                      ? 'Dados oficiais de fontes primárias. Sem intermediários nem viés jornalístico.'
-                      : 'Datos oficiales de fuentes primarias. Sin intermediarios ni sesgo periodístico.'}
-                  </p>
                 </div>
 
                 <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                   <button
                     onClick={() => setIsCustomizingTopics(!isCustomizingTopics)}
-                    className="h-8.5 px-3 bg-blue-100/70 hover:bg-blue-100 text-blue-950 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors border border-blue-200/80"
+                    className="h-8 px-3 bg-slate-100 hover:bg-slate-200/80 text-slate-800 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors border border-slate-200"
+                    title="Filtrar sectores visibles"
                   >
-                    <SlidersHorizontal className="size-3.5 text-blue-800" />
+                    <SlidersHorizontal className="size-3.5 text-slate-600" />
                     <span>
                       {isCustomizingTopics
                         ? (selectedCountry === 'BR' ? 'Pronto' : 'Listo')
-                        : (selectedCountry === 'BR' ? 'Ajustar' : 'Ajustar')}
+                        : (selectedCountry === 'BR' ? 'Sectores' : 'Sectores')}
                     </span>
                   </button>
                 </div>
@@ -934,30 +877,26 @@ export default function App() {
 
               {/* Customization Drawer */}
               {isCustomizingTopics && (
-                <div className="pt-3 border-t border-blue-100 space-y-2.5 animate-in fade-in duration-200">
-                  <div className="text-xs font-semibold text-slate-900">
-                    {selectedCountry === 'BR' ? 'Temas em exibição:' : 'Temas en pantalla:'}
-                  </div>
+                <div className="pt-3 border-t border-slate-100 space-y-2 animate-in fade-in duration-200">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                     {topics.map(topic => {
                       const isChecked = userInterestTopicIds.includes(topic.id);
-                      const warm = getTopicWarmBadge(topic.id);
                       return (
                         <div
                           key={topic.id}
                           onClick={() => toggleTopicInterest(topic.id)}
                           className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between gap-2 transition-all ${
                             isChecked
-                              ? `${warm.activePill}`
-                              : 'bg-blue-50/50 text-slate-600 border-blue-200/60 hover:bg-blue-100/60'
+                              ? 'bg-blue-50 text-blue-950 border-blue-200 font-semibold'
+                              : 'bg-slate-50/60 text-slate-500 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
                           <div className="flex items-center gap-2 truncate">
-                            <TopicIcon name={topic.iconName} className="size-4 shrink-0" />
-                            <span className="font-medium truncate">{topic.shortName}</span>
+                            <TopicIcon name={topic.iconName} className="size-4 shrink-0 text-blue-600" />
+                            <span className="truncate">{topic.shortName}</span>
                           </div>
                           <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
-                            isChecked ? 'bg-white text-slate-900' : 'border border-blue-300'
+                            isChecked ? 'bg-blue-600 text-white' : 'border border-slate-300'
                           }`}>
                             {isChecked && <Check className="size-3" />}
                           </div>
@@ -968,14 +907,14 @@ export default function App() {
                 </div>
               )}
 
-              {/* Visual Topic Filter Pills - NO VARIABLE COUNT (User Request) */}
-              <div className="pt-2.5 border-t border-blue-100 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              {/* Topic Filter Pills */}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
                 <button
                   onClick={() => setSelectedTopicFilter('ALL')}
-                  className={`h-8 px-3.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`h-8 px-3 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
                     selectedTopicFilter === 'ALL'
-                      ? 'bg-[#0f274a] text-blue-100 shadow-xs ring-1 ring-blue-500/30'
-                      : 'bg-blue-100/60 hover:bg-blue-100 text-slate-700 border border-blue-200/70'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200/80'
                   }`}
                 >
                   Todos
@@ -983,15 +922,14 @@ export default function App() {
                 {topics.map(topic => {
                   if (!userInterestTopicIds.includes(topic.id)) return null;
                   const isSelected = selectedTopicFilter === topic.id;
-                  const warm = getTopicWarmBadge(topic.id);
                   return (
                     <button
                       key={topic.id}
                       onClick={() => setSelectedTopicFilter(selectedTopicFilter === topic.id ? 'ALL' : topic.id)}
-                      className={`h-8 px-3 rounded-lg text-xs whitespace-nowrap flex items-center gap-1.5 transition-colors ${
+                      className={`h-8 px-3 rounded-lg text-xs whitespace-nowrap flex items-center gap-1.5 transition-colors font-medium ${
                         isSelected
-                          ? warm.activePill
-                          : 'bg-blue-100/60 hover:bg-blue-100 text-slate-700 border border-blue-200/70'
+                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200/80'
                       }`}
                     >
                       <TopicIcon name={topic.iconName} className="size-3" />
@@ -1002,255 +940,261 @@ export default function App() {
               </div>
             </div>
 
-            {/* VISUAL CARDS GALLERY: Presentación de Temas mediante Imágenes */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-medium text-slate-500 px-1">
-                <span className="flex items-center gap-1.5 font-mono text-[11px] text-blue-900/70">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                  Sectores
-                </span>
-                <span className="text-[11px] font-mono text-blue-900/50">
-                  13-10-2026
-                </span>
-              </div>
+            {/* SECTOR CARDS: Visual & Numerical Showcase (Pure Graphics & Numbers) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topics.map(topic => {
+                if (!userInterestTopicIds.includes(topic.id)) return null;
+                const isSelected = selectedTopicFilter === topic.id;
+                const topicVars = variables.filter(v => v.topicId === topic.id);
+                const topVars = topicVars.slice(0, 3);
+                const coverImage = topic.imageUrl || getVariableImage(topicVars[0]?.id, topic.id);
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {topics.map(topic => {
-                  if (!userInterestTopicIds.includes(topic.id)) return null;
-                  const isSelected = selectedTopicFilter === topic.id;
-                  const topicVars = variables.filter(v => v.topicId === topic.id);
-                  const topVars = topicVars.slice(0, 3);
-                  const warm = getTopicWarmBadge(topic.id);
+                return (
+                  <div
+                    key={topic.id}
+                    onClick={() => setSelectedTopicFilter(isSelected ? 'ALL' : topic.id)}
+                    className={`group rounded-2xl overflow-hidden bg-white border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
+                        : 'border-slate-200/90 hover:border-blue-400 hover:shadow-xs'
+                    }`}
+                  >
+                    {/* Brief Topic Header Image Banner with Overlay Badges */}
+                    <div className="relative h-28 w-full overflow-hidden bg-slate-100">
+                      <img
+                        src={coverImage}
+                        alt={topic.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-90"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/20 pointer-events-none" />
 
-                  return (
-                    <div
-                      key={topic.id}
-                      onClick={() => setSelectedTopicFilter(isSelected ? 'ALL' : topic.id)}
-                      className={`group relative rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 h-60 flex flex-col justify-between p-4 ${
-                        isSelected
-                          ? warm.cardBorder
-                          : 'border-blue-900/15 hover:border-blue-400/60 shadow-xs hover:shadow-md'
-                      }`}
-                    >
-                      {/* Background Technological Visualizer & Modern Subtle Backdrop */}
-                      <TopicTechVisualizer topicId={topic.id} accentColor={topic.accentColor} />
-                      {topic.imageUrl && (
-                        <img
-                          src={topic.imageUrl}
-                          alt={topic.imageAlt || topic.name}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-20 mix-blend-luminosity brightness-50 contrast-125"
-                          loading="lazy"
-                        />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/15 pointer-events-none" />
-
-                      {/* Card Top: Icon, Title & Status Badge */}
-                      <div className="relative z-10 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 backdrop-blur-md text-sky-200 font-mono text-[10px] font-bold border border-blue-300/30">
-                            OFICIAL
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-1">
-                          <div className="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-md text-white flex items-center justify-center shrink-0 border border-white/20">
-                            <TopicIcon name={topic.iconName} className="size-4" />
-                          </div>
-                          <h3 className="text-base font-bold text-white tracking-tight leading-snug drop-shadow-xs">
-                            {topic.name}
-                          </h3>
-                        </div>
+                      {/* Top Badges */}
+                      <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/95 text-slate-900 shadow-2xs">
+                          {topic.shortName}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            topicVars.forEach(v => exportVariableHistoryToCsv(v));
+                            triggerToast(`Descargando ${topic.shortName} (.csv)`);
+                          }}
+                          className="p-1.5 rounded-md bg-white/95 hover:bg-white text-slate-700 hover:text-blue-600 transition-colors shadow-2xs"
+                          title="Descargar datos en CSV (Excel / Sheets)"
+                        >
+                          <Download className="size-3.5" />
+                        </button>
                       </div>
 
-                      {/* Card Center: High-Density Live Data Strip (100% Data-Driven) */}
-                      <div className="relative z-10 my-auto py-1">
-                        <div className="bg-slate-950/80 backdrop-blur-md rounded-xl p-2.5 border border-blue-500/20 space-y-1.5">
-                          {topVars.map(v => (
-                            <div key={v.id} className="flex items-baseline justify-between text-xs gap-2">
-                              <span className="text-slate-300 text-[11px] truncate font-medium">
-                                {v.name}
-                              </span>
-                              <span className="text-white font-mono font-bold text-xs shrink-0 tabular-nums">
-                                {formatVariableValue(v)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Card Bottom: Source tags and explore prompt */}
-                      <div className="relative z-10 pt-1 flex items-center justify-between text-[11px]">
-                        <div className="flex items-center gap-1 overflow-hidden">
-                          {topic.sources.slice(0, 3).map(src => (
-                            <span
-                              key={src.id}
-                              className="px-1.5 py-0.5 rounded bg-white/10 backdrop-blur-xs text-white/80 font-mono text-[9px] border border-white/15 truncate"
-                            >
-                              {src.name}
-                            </span>
-                          ))}
-                        </div>
-
-                        <span className={`text-[11px] font-semibold flex items-center gap-0.5 shrink-0 transition-colors ${
-                          isSelected ? 'text-sky-300 font-bold' : 'text-white/90 group-hover:text-sky-300'
-                        }`}>
-                          {isSelected ? 'Filtro' : 'Ver'} <ChevronRight className="size-3" />
+                      {/* Bottom Banner Stats */}
+                      <div className="absolute bottom-2 left-2.5 right-2.5 flex items-baseline justify-between text-white font-mono">
+                        <span className="text-xl font-black tracking-tight drop-shadow-sm tabular-nums">
+                          {topVars[0] ? formatVariableValue(topVars[0]) : ''}
+                        </span>
+                        <span className="text-[11px] font-bold text-sky-200 drop-shadow-sm">
+                          {topicVars.length} variables
                         </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Numerical Data Rows with Sparkline Trajectories */}
+                    <div className="p-3.5 space-y-2">
+                      {topVars.map(v => {
+                        const hasHistory = v.history && v.history.length > 1;
+                        const latestVal = v.value;
+                        const prevPoint = hasHistory ? v.history[v.history.length - 2] : null;
+                        const delta = prevPoint ? latestVal - prevPoint.value : 0;
+                        const deltaPct = prevPoint && prevPoint.value !== 0 ? ((delta / prevPoint.value) * 100) : 0;
+                        const isPositiveDelta = delta >= 0;
+
+                        return (
+                          <div
+                            key={v.id}
+                            className="p-2 rounded-xl bg-slate-50/80 hover:bg-slate-100/90 border border-slate-200/60 flex items-center justify-between gap-2 transition-colors"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[11px] font-medium text-slate-600 truncate block">
+                                {v.name}
+                              </span>
+                              <span className="text-base font-black font-mono text-slate-950 tabular-nums block mt-0.5">
+                                {formatVariableValue(v)}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <MiniSparkline history={v.history} isPositive={isPositiveDelta} />
+                              {delta !== 0 ? (
+                                <span className={`text-[10px] font-mono font-bold flex items-center ${
+                                  delta > 0 ? 'text-emerald-600' : 'text-rose-600'
+                                }`}>
+                                  {delta > 0 ? '+' : ''}{deltaPct.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-mono text-slate-400">0.00%</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Visual Card Footer */}
+                    <div className="px-3.5 pb-3 flex items-center justify-between text-xs font-semibold text-blue-600 group-hover:text-blue-700">
+                      <span>{isSelected ? '● Seleccionado' : 'Ver indicadores →'}</span>
+                      <span className="text-[10px] font-mono text-slate-400 font-normal">
+                        {topic.sources.map(s => s.name).join(' · ')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* List of Thematic Ecosystems with Connected Variables */}
-            <div className="space-y-8">
+            {/* DEEP DIVE: CADA VARIABLE EXPLICADA CON IMAGEN BREVE + NÚMERO + GRÁFICO + CSV */}
+            <div className="space-y-6 pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                <span className="text-xs font-bold font-mono text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600" />
+                  {selectedTopicFilter === 'ALL'
+                    ? (selectedCountry === 'BR' ? 'TODAS AS VARIÁVEIS' : 'TODAS LAS VARIABLES')
+                    : (topics.find(t => t.id === selectedTopicFilter)?.name || '')}
+                </span>
+
+                {selectedTopicFilter !== 'ALL' && (
+                  <button
+                    onClick={() => setSelectedTopicFilter('ALL')}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 transition-colors"
+                  >
+                    Ver todas
+                  </button>
+                )}
+              </div>
+
               {displayedTopics.map(topic => {
                 const topicVariables = variables.filter(v => v.topicId === topic.id);
 
                 return (
                   <section
                     key={topic.id}
-                    className="rounded-2xl bg-white border border-blue-200/80 shadow-xs overflow-hidden space-y-5"
+                    className="rounded-2xl bg-white border border-slate-200/90 shadow-xs overflow-hidden p-5 sm:p-6 space-y-4"
                   >
-                    {/* Thematic Panoramic Hero Banner with Technological Visualizer */}
-                    <div className="relative h-36 sm:h-40 overflow-hidden p-5 sm:p-6 flex flex-col justify-between">
-                      <TopicTechVisualizer topicId={topic.id} accentColor={topic.accentColor} />
-                      {topic.imageUrl && (
-                        <img
-                          src={topic.imageUrl}
-                          alt={topic.imageAlt || topic.name}
-                          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-luminosity brightness-50 contrast-125"
-                          loading="lazy"
-                        />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/40 pointer-events-none" />
-
-                      {/* Header overlay top */}
-                      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/20 shadow-xs">
-                            <TopicIcon name={topic.iconName} className="size-4.5" />
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-sky-200 font-mono text-[10px] font-bold border border-blue-400/30">
-                            Oficial · En vivo
-                          </span>
+                    {/* Topic Header Bar */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                          <TopicIcon name={topic.iconName} className="size-4" />
                         </div>
-
-                        <span className="text-[11px] font-mono text-slate-300 hidden sm:inline-block">
-                          13-10-2026
-                        </span>
-                      </div>
-
-                      {/* Header overlay bottom */}
-                      <div className="relative z-10 space-y-1.5">
-                        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white drop-shadow-xs">
+                        <h3 className="text-sm sm:text-base font-bold text-slate-950 font-sans">
                           {topic.name}
-                        </h2>
-
-                        {/* Official & Chamber Sources Badges */}
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-mono text-sky-200/80 mr-1">
-                            Fuentes:
-                          </span>
-                          {topic.sources.map(source => (
-                            <a
-                              key={source.id}
-                              href={source.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-2 py-0.5 rounded-md text-[10px] font-mono flex items-center gap-1 bg-white/15 hover:bg-white/25 backdrop-blur-md text-white border border-white/20 transition-colors"
-                              title={`${source.fullName} - ${source.scope || source.role}`}
-                            >
-                              <span className="font-bold">{source.name}</span>
-                              <span className="text-[9px] opacity-75">
-                                ({source.type === 'publica' ? 'Oficial' : 'Cámara'})
-                              </span>
-                              <ExternalLink className="size-2.5 opacity-70" />
-                            </a>
-                          ))}
-                        </div>
+                        </h3>
                       </div>
+
+                      {/* Export All Variables of This Topic to CSV */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          topicVariables.forEach(v => exportVariableHistoryToCsv(v));
+                          triggerToast(`Descargando ${topicVariables.length} variables en CSV`);
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 flex items-center gap-1.5 transition-colors shrink-0"
+                        title="Descargar variables en CSV para Excel o Google Sheets"
+                      >
+                        <Download className="size-3.5" />
+                        <span>Exportar CSV</span>
+                      </button>
                     </div>
 
-                    {/* Connected Variables Grid */}
-                    <div className="p-5 sm:p-6 pt-0">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                        {topicVariables.map(variable => {
-                          const hasHistory = variable.history && variable.history.length > 1;
-                          const latestVal = variable.value;
-                          const prevPoint = hasHistory ? variable.history[variable.history.length - 2] : null;
-                          const delta = prevPoint ? latestVal - prevPoint.value : 0;
-                          const deltaPct = prevPoint && prevPoint.value !== 0 ? ((delta / prevPoint.value) * 100) : 0;
-                          const isPositiveDelta = delta >= 0;
+                    {/* Connected Variables Grid: Brief Image + Pure Numbers + Sparkline */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {topicVariables.map(variable => {
+                        const hasHistory = variable.history && variable.history.length > 1;
+                        const latestVal = variable.value;
+                        const prevPoint = hasHistory ? variable.history[variable.history.length - 2] : null;
+                        const delta = prevPoint ? latestVal - prevPoint.value : 0;
+                        const deltaPct = prevPoint && prevPoint.value !== 0 ? ((delta / prevPoint.value) * 100) : 0;
+                        const isPositiveDelta = delta >= 0;
+                        const varImage = getVariableImage(variable.id, variable.topicId);
 
-                          return (
-                            <div
-                              key={variable.id}
-                              onClick={() => openVariableInspector(variable.id)}
-                              className="p-4 rounded-xl bg-white hover:bg-blue-50/50 border border-blue-200/70 hover:border-blue-400/80 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] shadow-xs"
-                            >
-                              <div className="space-y-2">
-                                {/* Meta Tags */}
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-50 border border-blue-200/80 text-blue-900">
-                                    {variable.source}
-                                  </span>
+                        return (
+                          <div
+                            key={variable.id}
+                            onClick={() => openVariableInspector(variable.id)}
+                            className="overflow-hidden rounded-2xl bg-white hover:bg-slate-50/70 border border-slate-200/90 hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between group active:scale-[0.99] shadow-2xs hover:shadow-xs"
+                          >
+                            {/* Brief Visual Image Explaining the Variable Concept */}
+                            <div className="relative h-28 w-full overflow-hidden bg-slate-100">
+                              <img
+                                src={varImage}
+                                alt={variable.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-95"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/15 pointer-events-none" />
 
-                                  <span className="text-[10px] font-mono text-slate-400">
-                                    {variable.frequency}
-                                  </span>
-                                </div>
+                              {/* Badges on Top of Image */}
+                              <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-white/95 text-slate-900 shadow-2xs">
+                                  {variable.source}
+                                </span>
 
-                                {/* Variable Name */}
-                                <h3 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-950 transition-colors leading-snug line-clamp-2">
-                                  {variable.name}
-                                </h3>
+                                {/* CSV Download Button */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    exportVariableHistoryToCsv(variable);
+                                    triggerToast(`Descargando ${variable.name} (.csv)`);
+                                  }}
+                                  className="p-1.5 rounded-md bg-white/95 hover:bg-white text-slate-700 hover:text-blue-600 transition-colors shadow-2xs"
+                                  title="Descargar historial en CSV (Excel / Google Sheets)"
+                                >
+                                  <Download className="size-3.5" />
+                                </button>
                               </div>
 
-                              {/* Value Display + Mini Sparkline */}
-                              <div className="pt-3 mt-3 border-t border-blue-100 flex items-end justify-between gap-2">
-                                <div>
-                                  <span className="text-xl sm:text-2xl font-black font-mono tracking-tight text-slate-950 tabular-nums block">
-                                    {formatVariableValue(variable)}
-                                  </span>
-                                  <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
-                                    {variable.lastUpdated}
-                                    <span
-                                      className={variable.live ? 'ml-1.5 text-emerald-600' : variable.verifiedAt ? 'ml-1.5 text-amber-600' : 'ml-1.5 text-slate-400'}
-                                      title={variable.live
-                                        ? 'Consultado a la fuente oficial'
-                                        : variable.verifiedAt
-                                          ? `Verificado manualmente el ${variable.verifiedAt}; se reemplaza cuando la fuente responde`
-                                          : 'Dato cargado manualmente y sin verificar'}
-                                    >
-                                      {variable.live ? '● en vivo' : variable.verifiedAt ? '◐ verificado' : '○ sin verificar'}
-                                    </span>
-                                  </span>
-                                </div>
-
-                                {/* Mini Trend Sparkline & Delta Badge */}
-                                <div className="flex flex-col items-end gap-1">
-                                  <MiniSparkline history={variable.history} isPositive={isPositiveDelta} />
-
-                                  {delta !== 0 ? (
-                                    <span className={`text-[11px] font-mono font-semibold flex items-center ${
-                                      delta > 0 ? 'text-emerald-600' : 'text-rose-600'
-                                    }`}>
-                                      {delta > 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
-                                      {delta > 0 ? '+' : ''}{deltaPct.toFixed(2)}%
-                                    </span>
-                                  ) : (
-                                    <span className="text-[11px] font-mono text-slate-400">
-                                      Estable
-                                    </span>
-                                  )}
-                                </div>
+                              {/* Minimal Variable Name in High-Contrast Overlay */}
+                              <div className="absolute bottom-2 left-2 right-2">
+                                <h4 className="text-xs font-bold text-white tracking-tight drop-shadow-sm truncate">
+                                  {variable.name}
+                                </h4>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
+
+                            {/* Pure Numbers & Sparkline Graph Section */}
+                            <div className="p-4 space-y-2.5">
+                              {/* Big Numerical Value + Delta */}
+                              <div className="flex items-baseline justify-between gap-2">
+                                <span className="text-2xl font-black font-mono tracking-tight text-slate-950 tabular-nums">
+                                  {formatVariableValue(variable)}
+                                </span>
+
+                                {delta !== 0 ? (
+                                  <span className={`text-xs font-mono font-bold flex items-center shrink-0 ${
+                                    delta > 0 ? 'text-emerald-600' : 'text-rose-600'
+                                  }`}>
+                                    {delta > 0 ? <ArrowUpRight className="size-3.5" /> : <ArrowDownRight className="size-3.5" />}
+                                    {delta > 0 ? '+' : ''}{deltaPct.toFixed(2)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-xs font-mono text-slate-400">
+                                    0.00%
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Graph (Sparkline) + Date */}
+                              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  {formatToDayMonthYear(variable.lastUpdated)}
+                                </span>
+                                <MiniSparkline history={variable.history} isPositive={isPositiveDelta} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </section>
                 );
@@ -1271,177 +1215,439 @@ export default function App() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* DÓLAR COMERCIAL PTAX VENDA */}
-                  <div
-                    onClick={() => openVariableInspector('bcb_dolar_ptax_venda')}
-                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
-                  >
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-bold text-slate-800">Dólar Comercial PTAX</span>
-                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">BCB Oficial</span>
-                    </div>
+                  {(() => {
+                    const ptaxVar = variables.find(v => v.id === 'bcb_dolar_ptax_venda');
+                    const imgUrl = getVariableImage('bcb_dolar_ptax_venda', 'cambiario_divisas');
+                    return (
+                      <div
+                        onClick={() => openVariableInspector('bcb_dolar_ptax_venda')}
+                        className="group rounded-2xl bg-white border border-slate-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-28 w-full bg-slate-100 overflow-hidden">
+                          <img
+                            src={imgUrl}
+                            alt="Dólar PTAX"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/95 text-slate-900 shadow-2xs backdrop-blur-xs">
+                              BCB Oficial
+                            </span>
+                          </div>
+                          {ptaxVar && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportVariableHistoryToCsv(ptaxVar);
+                                triggerToast('Descargando histórico de PTAX (.csv)');
+                              }}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/95 text-slate-700 hover:text-blue-700 hover:bg-white shadow-2xs transition-all active:scale-95"
+                              title="Exportar dados em CSV"
+                            >
+                              <Download className="size-3.5" />
+                            </button>
+                          )}
+                          <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between text-white">
+                            <span className="text-xs font-bold font-sans drop-shadow-xs">Dólar Comercial PTAX</span>
+                            <span className="text-[11px] font-mono text-emerald-300 flex items-center font-bold bg-slate-950/50 px-1.5 py-0.5 rounded backdrop-blur-xs">
+                              <ArrowDownRight className="size-3" /> -0.15%
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="flex items-baseline justify-between gap-3 my-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                        R$ 5,680
-                      </span>
-                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
-                        <ArrowDownRight className="size-3.5" /> -0.15%
-                      </span>
-                    </div>
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 font-mono tabular-nums">
+                              R$ 5,680
+                            </span>
+                            {ptaxVar?.history && (
+                              <MiniSparkline history={ptaxVar.history} isPositive={false} />
+                            )}
+                          </div>
 
-                    <p className="text-xs font-mono text-slate-600 mt-2">
-                      Compra: R$ 5,674 · Venda: R$ 5,680
-                    </p>
+                          <div className="flex items-center justify-between text-xs font-mono text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60">
+                            <span>Compra: <strong className="text-slate-900">R$ 5,674</strong></span>
+                            <span>Venda: <strong className="text-slate-900">R$ 5,680</strong></span>
+                          </div>
 
-                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>13-10-2026</span>
-                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
-                        Ver histórico <ChevronRight className="size-3" />
-                      </span>
-                    </div>
-                  </div>
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                            <span>{formatToDayMonthYear(getArgentinaTodayDate())}</span>
+                            <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                              Ver gráfico <ChevronRight className="size-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* DÓLAR TURISMO PAPEL MOEDA */}
-                  <div
-                    onClick={() => openVariableInspector('bcb_dolar_turismo')}
-                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
-                  >
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-bold text-slate-800">Dólar Turismo</span>
-                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">ABRACAM</span>
-                    </div>
+                  {(() => {
+                    const turVar = variables.find(v => v.id === 'bcb_dolar_turismo');
+                    const imgUrl = getVariableImage('bcb_dolar_turismo', 'cambiario_divisas');
+                    return (
+                      <div
+                        onClick={() => openVariableInspector('bcb_dolar_turismo')}
+                        className="group rounded-2xl bg-white border border-slate-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-28 w-full bg-slate-100 overflow-hidden">
+                          <img
+                            src={imgUrl}
+                            alt="Dólar Turismo"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/95 text-slate-900 shadow-2xs backdrop-blur-xs">
+                              ABRACAM
+                            </span>
+                          </div>
+                          {turVar && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportVariableHistoryToCsv(turVar);
+                                triggerToast('Descargando histórico Turismo (.csv)');
+                              }}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/95 text-slate-700 hover:text-blue-700 hover:bg-white shadow-2xs transition-all active:scale-95"
+                              title="Exportar dados em CSV"
+                            >
+                              <Download className="size-3.5" />
+                            </button>
+                          )}
+                          <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between text-white">
+                            <span className="text-xs font-bold font-sans drop-shadow-xs">Dólar Turismo</span>
+                            <span className="text-[11px] font-mono text-emerald-300 flex items-center font-bold bg-slate-950/50 px-1.5 py-0.5 rounded backdrop-blur-xs">
+                              <ArrowDownRight className="size-3" /> -0.10%
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="flex items-baseline justify-between gap-3 my-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                        R$ 5,920
-                      </span>
-                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
-                        <ArrowDownRight className="size-3.5" /> -0.10%
-                      </span>
-                    </div>
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 font-mono tabular-nums">
+                              R$ 5,920
+                            </span>
+                            {turVar?.history && (
+                              <MiniSparkline history={turVar.history} isPositive={false} />
+                            )}
+                          </div>
 
-                    <p className="text-xs font-mono text-slate-600 mt-2">
-                      Compra: R$ 5,750 · Venda: R$ 5,920
-                    </p>
+                          <div className="flex items-center justify-between text-xs font-mono text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60">
+                            <span>Compra: <strong className="text-slate-900">R$ 5,750</strong></span>
+                            <span>Venda: <strong className="text-slate-900">R$ 5,920</strong></span>
+                          </div>
 
-                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>13-10-2026</span>
-                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
-                        Ver histórico <ChevronRight className="size-3" />
-                      </span>
-                    </div>
-                  </div>
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                            <span>{formatToDayMonthYear(getArgentinaTodayDate())}</span>
+                            <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                              Ver gráfico <ChevronRight className="size-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                {/* Grid de Outras Cotações Oficiais */}
+                {/* Grid de Outras Cotações Oficiais (Visual + CSV + Numbers) */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div
-                    onClick={() => openVariableInspector('bcb_euro_ptax')}
-                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 hover:border-blue-400 cursor-pointer shadow-xs"
-                  >
-                    <span className="text-[11px] text-slate-400 block font-mono">Euro PTAX</span>
-                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 6,180</span>
-                    <span className="text-[10px] text-emerald-600 font-mono">+0.22%</span>
+                  {(() => {
+                    const euroVar = variables.find(v => v.id === 'bcb_euro_ptax');
+                    const euroImg = getVariableImage('bcb_euro_ptax', 'cambiario_divisas');
+                    return (
+                      <div
+                        onClick={() => openVariableInspector('bcb_euro_ptax')}
+                        className="group rounded-xl bg-white border border-slate-200/80 hover:border-blue-400 cursor-pointer shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-16 w-full bg-slate-100 overflow-hidden">
+                          <img src={euroImg} alt="Euro PTAX" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent" />
+                          <span className="absolute bottom-1.5 left-2 text-[11px] font-bold text-white font-sans">Euro PTAX</span>
+                          {euroVar && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportVariableHistoryToCsv(euroVar);
+                                triggerToast('Descargando Euro PTAX (.csv)');
+                              }}
+                              className="absolute top-1.5 right-1.5 p-1 rounded bg-white/90 text-slate-700 hover:text-blue-700"
+                              title="Exportar CSV"
+                            >
+                              <Download className="size-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <span className="text-lg font-black font-mono text-slate-950 block">R$ 6,180</span>
+                          <span className="text-[10px] text-emerald-600 font-mono font-bold">+0.22%</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="group rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden flex flex-col justify-between">
+                    <div className="relative h-16 w-full bg-slate-100 overflow-hidden">
+                      <img src="https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=400&q=80" alt="Libra" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent" />
+                      <span className="absolute bottom-1.5 left-2 text-[11px] font-bold text-white font-sans">Libra (BCB)</span>
+                    </div>
+                    <div className="p-3">
+                      <span className="text-lg font-black font-mono text-slate-950 block">R$ 7,122</span>
+                      <span className="text-[10px] text-emerald-600 font-mono font-bold">+0.18%</span>
+                    </div>
                   </div>
-                  <div
-                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs"
-                  >
-                    <span className="text-[11px] text-slate-400 block font-mono">Libra (BCB)</span>
-                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 7,122</span>
-                    <span className="text-[10px] text-emerald-600 font-mono">+0.18%</span>
-                  </div>
-                  <div
-                    onClick={() => openVariableInspector('bcb_reservas_internacionais')}
-                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 hover:border-blue-400 cursor-pointer shadow-xs"
-                  >
-                    <span className="text-[11px] text-slate-400 block font-mono">Reservas BCB</span>
-                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">US$ 355,4 Bi</span>
-                    <span className="text-[10px] text-slate-500 font-mono">Líquidas</span>
-                  </div>
-                  <div
-                    className="p-3.5 rounded-xl bg-white border border-blue-200/80 shadow-xs"
-                  >
-                    <span className="text-[11px] text-slate-400 block font-mono">Ouro (B3)</span>
-                    <span className="text-lg font-bold font-mono text-slate-950 block mt-0.5">R$ 478,50</span>
-                    <span className="text-[10px] text-emerald-600 font-mono">Por grama</span>
+
+                  {(() => {
+                    const resVar = variables.find(v => v.id === 'bcb_reservas_internacionais');
+                    const resImg = getVariableImage('bcb_reservas_internacionais', 'cambiario_divisas');
+                    return (
+                      <div
+                        onClick={() => openVariableInspector('bcb_reservas_internacionais')}
+                        className="group rounded-xl bg-white border border-slate-200/80 hover:border-blue-400 cursor-pointer shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-16 w-full bg-slate-100 overflow-hidden">
+                          <img src={resImg} alt="Reservas" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent" />
+                          <span className="absolute bottom-1.5 left-2 text-[11px] font-bold text-white font-sans">Reservas BCB</span>
+                          {resVar && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportVariableHistoryToCsv(resVar);
+                                triggerToast('Descargando Reservas BCB (.csv)');
+                              }}
+                              className="absolute top-1.5 right-1.5 p-1 rounded bg-white/90 text-slate-700 hover:text-blue-700"
+                              title="Exportar CSV"
+                            >
+                              <Download className="size-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <span className="text-lg font-black font-mono text-slate-950 block">US$ 355,4 Bi</span>
+                          <span className="text-[10px] text-slate-500 font-mono">Líquidas</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="group rounded-xl bg-white border border-slate-200/80 shadow-xs overflow-hidden flex flex-col justify-between">
+                    <div className="relative h-16 w-full bg-slate-100 overflow-hidden">
+                      <img src="https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=400&q=80" alt="Ouro" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 to-transparent" />
+                      <span className="absolute bottom-1.5 left-2 text-[11px] font-bold text-white font-sans">Ouro (B3)</span>
+                    </div>
+                    <div className="p-3">
+                      <span className="text-lg font-black font-mono text-slate-950 block">R$ 478,50</span>
+                      <span className="text-[10px] text-emerald-600 font-mono font-bold">Por grama</span>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              /* COTIZACIONES BNA ARGENTINA */
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* DÓLAR BILLETE BNA */}
-                {bnaBillete && (
-                  <div
-                    onClick={() => openVariableInspector(bnaBillete.id)}
-                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
-                  >
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-bold text-slate-800">Dólar Minorista Billete</span>
-                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">BNA Ventanilla</span>
-                    </div>
+              /* COTIZACIONES BNA Y MERCADO ARGENTINA (Foco Visual & Números) */
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* DÓLAR BILLETE BNA */}
+                  {bnaBillete && (() => {
+                    const imgUrl = getVariableImage(bnaBillete.id, bnaBillete.topicId);
+                    return (
+                      <div
+                        onClick={() => openVariableInspector(bnaBillete.id)}
+                        className="group rounded-2xl bg-white border border-slate-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-28 w-full bg-slate-100 overflow-hidden">
+                          <img
+                            src={imgUrl}
+                            alt={bnaBillete.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/95 text-slate-900 shadow-2xs backdrop-blur-xs">
+                              BNA Minorista
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportVariableHistoryToCsv(bnaBillete);
+                              triggerToast(`Descargando historial de ${bnaBillete.name} (.csv)`);
+                            }}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/95 text-slate-700 hover:text-blue-700 hover:bg-white shadow-2xs transition-all active:scale-95"
+                            title="Descargar cotizaciones en CSV (Excel / Sheets)"
+                          >
+                            <Download className="size-3.5" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between text-white">
+                            <span className="text-xs font-bold font-sans drop-shadow-xs">Dólar Minorista Billete</span>
+                            <span className="text-[11px] font-mono text-emerald-300 flex items-center font-bold bg-slate-950/50 px-1.5 py-0.5 rounded backdrop-blur-xs">
+                              <ArrowUpRight className="size-3" /> +0.06%
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="flex items-baseline justify-between gap-3 my-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                        {formatArs(bnaBillete.value)}
-                      </span>
-                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
-                        <ArrowUpRight className="size-3.5" /> +0.06%
-                      </span>
-                    </div>
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 font-mono tabular-nums">
+                              {formatArs(bnaBillete.value)}
+                            </span>
+                            {bnaBillete.history && (
+                              <MiniSparkline history={bnaBillete.history} isPositive={true} />
+                            )}
+                          </div>
 
-                    <p className="text-xs font-mono text-slate-600 mt-2">
-                      Compra: $1.005,00 · Venta: $1.025,00
-                    </p>
+                          <div className="flex items-center justify-between text-xs font-mono text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60">
+                            <span>Compra: <strong className="text-slate-900">$1.005,00</strong></span>
+                            <span>Venta: <strong className="text-slate-900">$1.025,00</strong></span>
+                          </div>
 
-                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>13-10-2026</span>
-                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
-                        Ver histórico <ChevronRight className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-                )}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                            <span>{formatToDayMonthYear(getArgentinaTodayDate())}</span>
+                            <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                              Ver gráfico <ChevronRight className="size-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                {/* DÓLAR DIVISA BNA */}
-                {bnaDivisa && (
-                  <div
-                    onClick={() => openVariableInspector(bnaDivisa.id)}
-                    className="p-5 rounded-2xl bg-white border border-blue-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs"
-                  >
-                    <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                      <span className="font-bold text-slate-800">Dólar Divisa Transferencia</span>
-                      <span className="font-mono text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 text-[10px]">BNA Electrónico</span>
-                    </div>
+                  {/* DÓLAR DIVISA BNA */}
+                  {bnaDivisa && (() => {
+                    const imgUrl = getVariableImage(bnaDivisa.id, bnaDivisa.topicId);
+                    return (
+                      <div
+                        onClick={() => openVariableInspector(bnaDivisa.id)}
+                        className="group rounded-2xl bg-white border border-slate-200/80 hover:border-blue-400/80 cursor-pointer transition-all shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-28 w-full bg-slate-100 overflow-hidden">
+                          <img
+                            src={imgUrl}
+                            alt={bnaDivisa.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+                          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white/95 text-slate-900 shadow-2xs backdrop-blur-xs">
+                              BNA Electrónico
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              exportVariableHistoryToCsv(bnaDivisa);
+                              triggerToast(`Descargando historial de ${bnaDivisa.name} (.csv)`);
+                            }}
+                            className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/95 text-slate-700 hover:text-blue-700 hover:bg-white shadow-2xs transition-all active:scale-95"
+                            title="Descargar cotizaciones en CSV (Excel / Sheets)"
+                          >
+                            <Download className="size-3.5" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 right-2 flex items-end justify-between text-white">
+                            <span className="text-xs font-bold font-sans drop-shadow-xs">Dólar Mayorista / Divisa</span>
+                            <span className="text-[11px] font-mono text-emerald-300 flex items-center font-bold bg-slate-950/50 px-1.5 py-0.5 rounded backdrop-blur-xs">
+                              <ArrowUpRight className="size-3" /> +0.05%
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="flex items-baseline justify-between gap-3 my-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-950 font-mono tabular-nums">
-                        {formatArs(bnaDivisa.value)}
-                      </span>
-                      <span className="text-xs font-mono font-medium text-emerald-600 flex items-center">
-                        <ArrowUpRight className="size-3.5" /> +0.05%
-                      </span>
-                    </div>
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 font-mono tabular-nums">
+                              {formatArs(bnaDivisa.value)}
+                            </span>
+                            {bnaDivisa.history && (
+                              <MiniSparkline history={bnaDivisa.history} isPositive={true} />
+                            )}
+                          </div>
 
-                    <p className="text-xs font-mono text-slate-600 mt-2">
-                      Compra: $995,00 · Venta: $1.005,00
-                    </p>
+                          <div className="flex items-center justify-between text-xs font-mono text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/60">
+                            <span>Compra: <strong className="text-slate-900">$995,00</strong></span>
+                            <span>Venta: <strong className="text-slate-900">$1.005,00</strong></span>
+                          </div>
 
-                    <div className="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between text-xs text-slate-400 font-mono">
-                      <span>13-10-2026</span>
-                      <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
-                        Ver histórico <ChevronRight className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-                )}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                            <span>{formatToDayMonthYear(getArgentinaTodayDate())}</span>
+                            <span className="text-blue-700 font-sans font-medium flex items-center gap-0.5">
+                              Ver gráfico <ChevronRight className="size-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Grid Visual de Otras Cotizaciones Clave en Argentina (MEP, CCL, Blue, Tarjeta) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { id: 'dolar_mep_byma', label: 'Dólar MEP', defaultVal: '$1.140,50', delta: '+0.12%', positive: true },
+                    { id: 'dolar_ccl_byma', label: 'Dólar CCL', defaultVal: '$1.185,20', delta: '+0.08%', positive: true },
+                    { id: 'dolar_blue', label: 'Dólar Libre', defaultVal: '$1.190,00', delta: '-0.42%', positive: false },
+                    { id: 'dolar_tarjeta', label: 'Dólar Tarjeta', defaultVal: '$1.640,00', delta: '+0.06%', positive: true },
+                  ].map(item => {
+                    const targetVar = variables.find(v => v.id === item.id);
+                    const imgUrl = getVariableImage(item.id, 'cambiario_divisas');
+                    const displayVal = targetVar ? formatVariableValue(targetVar) : item.defaultVal;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => openVariableInspector(item.id)}
+                        className="group rounded-xl bg-white border border-slate-200/80 hover:border-blue-400 cursor-pointer shadow-xs overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="relative h-18 w-full bg-slate-100 overflow-hidden">
+                          <img src={imgUrl} alt={item.label} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 to-transparent" />
+                          <span className="absolute bottom-1.5 left-2 text-[11px] font-bold text-white font-sans truncate pr-8">
+                            {item.label}
+                          </span>
+                          {targetVar && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                exportVariableHistoryToCsv(targetVar);
+                                triggerToast(`Descargando ${item.label} (.csv)`);
+                              }}
+                              className="absolute top-1.5 right-1.5 p-1 rounded bg-white/90 text-slate-700 hover:text-blue-700 shadow-2xs"
+                              title="Exportar CSV"
+                            >
+                              <Download className="size-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <span className="text-base sm:text-lg font-black font-mono text-slate-950 block tabular-nums">
+                            {displayVal}
+                          </span>
+                          <span className={`text-[10px] font-mono font-bold ${item.positive ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {item.delta}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             {/* Quick Chart Inline Container */}
             {activeVar && (
-              <div className="p-5 rounded-2xl bg-white border border-blue-200/80 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-100">
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                   <div>
                     <div className="text-xs text-slate-400 font-mono">
                       {activeVar.source} · {activeVar.frequency}
@@ -1451,20 +1657,35 @@ export default function App() {
                     </h3>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-blue-100/60 p-0.5 rounded-lg self-start sm:self-auto border border-blue-200/60">
-                    {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
-                      <button
-                        key={range}
-                        onClick={() => setChartRange(range)}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                          chartRange === range
-                            ? 'bg-[#0f274a] text-blue-100 shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        {range}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
+                        <button
+                          key={range}
+                          onClick={() => setChartRange(range)}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
+                            chartRange === range
+                              ? 'bg-slate-900 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {range}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        exportVariableHistoryToCsv(activeVar, chartData);
+                        triggerToast(`Descargando datos de ${activeVar.name} (.csv)`);
+                      }}
+                      className="h-7 px-2.5 rounded-md text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1 transition-colors"
+                      title="Descargar datos en CSV para abrir en Excel o Google Sheets"
+                    >
+                      <Download className="size-3" />
+                      <span>CSV</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1527,8 +1748,8 @@ export default function App() {
                 <h3 className="text-sm font-bold text-slate-950">
                   {selectedCountry === 'BR' ? 'Simulador de Renda Fixa CDB' : 'Simulador de Plazo Fijo'}
                 </h3>
-                <span className="text-xs font-mono text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/60">
-                  13-10-2026
+                <span className="text-xs font-mono text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                  {formatToDayMonthYear(getArgentinaTodayDate())}
                 </span>
               </div>
 
@@ -1723,26 +1944,59 @@ export default function App() {
 
               {activeVar && (
                 <div className="mt-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-blue-100">
-                    <div>
-                      <div className="text-xs font-mono text-slate-400">
-                        {activeVar.source} · {activeVar.frequency}
-                      </div>
-                      <h3 className="text-base font-bold text-slate-950 mt-0.5">{activeVar.name}</h3>
-                      <div className="text-xs text-slate-600 mt-0.5">
-                        13-10-2026: <strong className="font-mono text-slate-950">{formatVariableValue(activeVar)}</strong>
-                      </div>
+                  {/* Brief Illustrative Image Banner for Selected Variable */}
+                  <div className="relative h-28 sm:h-32 w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200">
+                    <img
+                      src={getVariableImage(activeVar.id, activeVar.topicId)}
+                      alt={activeVar.name}
+                      className="w-full h-full object-cover opacity-60"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent" />
+                    
+                    <div className="absolute top-2.5 left-3 flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-white text-slate-900 shadow-2xs">
+                        {activeVar.source}
+                      </span>
+                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-slate-800/80 text-slate-200 backdrop-blur-xs">
+                        {activeVar.frequency}
+                      </span>
                     </div>
 
-                    {/* Chart Range Switcher: 30D, 90D, 1Y, 3Y */}
-                    <div className="flex items-center gap-1 bg-blue-100/60 p-0.5 rounded-lg self-start sm:self-auto border border-blue-200/60">
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-end justify-between text-white">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold font-sans drop-shadow-xs">{activeVar.name}</h3>
+                        <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white mt-0.5 tabular-nums">
+                          {formatVariableValue(activeVar)}
+                        </div>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          exportVariableHistoryToCsv(activeVar, chartData);
+                          triggerToast(`Descargando datos de ${activeVar.name} (.csv)`);
+                        }}
+                        className="h-8 px-3 rounded-lg text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 shrink-0"
+                        title="Descargar datos en CSV para abrir en Excel o Google Sheets"
+                      >
+                        <Download className="size-3.5" />
+                        <span>Exportar CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Chart Range Switcher */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <span className="text-xs font-mono text-slate-500">Período de gráfico:</span>
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                       {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
                         <button
                           key={range}
                           onClick={() => setChartRange(range)}
                           className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                             chartRange === range
-                              ? 'bg-[#0f274a] text-blue-100 shadow-xs'
+                              ? 'bg-slate-900 text-white shadow-xs'
                               : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
@@ -1836,9 +2090,18 @@ export default function App() {
                     </ResponsiveContainer>
                   </div>
 
-                  <p className="text-xs text-slate-600 leading-relaxed pt-2 font-mono">
-                    {activeVar.description}
-                  </p>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-mono text-[11px]">{activeVar.source} · Serie oficial auditada</span>
+                    <a
+                      href={activeVar.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-md font-mono text-[11px] flex items-center gap-1 transition-colors"
+                    >
+                      <span>Web oficial</span>
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
@@ -2077,158 +2340,94 @@ export default function App() {
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* TAB 6: ASESOR IA (GEMINI) */}
-        {/* ============================================================ */}
-        {activeTab === 'asesor' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-blue-200/80 shadow-xs overflow-hidden flex flex-col h-[500px]">
-              {/* Header */}
-              <div className="p-4 border-b border-blue-100 flex items-center justify-between bg-blue-50/30">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Asesor Macro</h3>
-                  <span className="text-xs text-slate-500 font-mono">Fuentes oficiales BNA, BCB, INDEC, IBGE y Cámaras</span>
-                </div>
-                <span className="text-xs font-mono text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded border border-blue-300">
-                  13-10-2026
-                </span>
-              </div>
-
-              {/* Chat Thread */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#edf3fa]">
-                {chatMessages.map(m => (
-                  <div
-                    key={m.id}
-                    className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
-                  >
-                    <span className="text-[10px] text-slate-400 mb-0.5 px-1 font-mono">
-                      {m.sender === 'user' ? 'Vos' : 'Asesor'} · {m.timestamp}
-                    </span>
-                    <div
-                      className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
-                        m.sender === 'user'
-                          ? 'bg-[#0f274a] text-blue-100 rounded-tr-none'
-                          : 'bg-white text-slate-900 border border-blue-200/80 rounded-tl-none shadow-xs'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{m.text}</p>
-                    </div>
-                  </div>
-                ))}
-                {isChatLoading && (
-                  <div className="flex items-center gap-2 p-3 bg-white border border-blue-200 rounded-xl w-fit text-xs text-slate-600">
-                    <RefreshCw className="size-3 animate-spin text-blue-700" />
-                    <span>Consultando fuentes...</span>
-                  </div>
-                )}
-                <div ref={chatBottomRef} />
-              </div>
-
-              {/* Suggested Questions */}
-              <div className="p-2 border-t border-blue-100 bg-white flex gap-1.5 overflow-x-auto scrollbar-none">
-                <button
-                  type="button"
-                  onClick={() => handleSendChatMessage('¿A cuánto cotiza hoy el dólar billete y divisa en el BNA?')}
-                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
-                >
-                  Dólar BNA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSendChatMessage('¿Qué banco paga hoy la mejor tasa de plazo fijo?')}
-                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
-                >
-                  Mejor Plazo Fijo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSendChatMessage('¿Cuánto estimó el REM de inflación mensual para septiembre y octubre 2026?')}
-                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
-                >
-                  Inflación REM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSendChatMessage('¿Cuánto liquidó el agro esta semana según CIARA-CEC?')}
-                  className="h-7 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[11px] rounded-lg text-blue-900 whitespace-nowrap"
-                >
-                  Agro CIARA-CEC
-                </button>
-              </div>
-
-              {/* Input */}
-              <form
-                onSubmit={e => { e.preventDefault(); handleSendChatMessage(); }}
-                className="p-3 border-t border-blue-200 bg-white flex gap-2"
-              >
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  placeholder="Consulta rápida sobre variables o cotizaciones..."
-                  className="flex-1 h-10 px-3 border border-blue-200/90 rounded-xl text-xs focus:outline-none focus:border-blue-600 bg-blue-50/20"
-                />
-                <button
-                  type="submit"
-                  disabled={isChatLoading || !chatInput.trim()}
-                  className="h-10 px-4 bg-[#0f274a] hover:bg-slate-950 text-blue-100 rounded-xl text-xs font-semibold disabled:opacity-50 transition-colors"
-                >
-                  Enviar
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* ============================================================ */}
         {/* INTERACTIVE MODAL / DRAWER FOR VARIABLE INSPECTION */}
         {/* ============================================================ */}
         {isChartModalOpen && activeVar && (
-          <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl border border-blue-200/90 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl p-5 sm:p-6 space-y-4">
+          <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl border border-slate-200/90 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-5 sm:p-6 space-y-4">
               
-              {/* Modal Header */}
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-blue-100">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${
-                      activeVar.sourceType === 'publica'
-                        ? 'bg-blue-100 border-blue-300 text-blue-900'
-                        : 'bg-sky-100 border-sky-300 text-sky-900'
-                    }`}>
+              {/* Illustrative Image Banner Header for Variable */}
+              <div className="relative h-32 sm:h-36 -mx-5 -mt-5 sm:-mx-6 sm:-mt-6 rounded-t-2xl overflow-hidden bg-slate-950">
+                <img
+                  src={getVariableImage(activeVar.id, activeVar.topicId)}
+                  alt={activeVar.name}
+                  className="w-full h-full object-cover opacity-60"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/40 to-transparent" />
+                
+                {/* Top Actions: Badges & Close Button */}
+                <div className="absolute top-3 left-4 right-4 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white text-slate-950 shadow-2xs">
                       {activeVar.source} · {activeVar.sourceType === 'publica' ? 'Oficial' : 'Cámara'}
                     </span>
-                    <span className="text-[11px] font-mono text-slate-500">
+                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-slate-800/80 text-slate-200 backdrop-blur-xs">
                       {activeVar.frequency}
                     </span>
                   </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-1">
-                    {activeVar.name}
-                  </h3>
-                  <div className="text-sm font-mono font-extrabold text-blue-950 mt-0.5">
-                    {formatVariableValue(activeVar)}
-                  </div>
+
+                  <button
+                    onClick={() => setIsChartModalOpen(false)}
+                    className="p-1.5 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white/80 hover:text-white transition-colors backdrop-blur-xs"
+                    title="Cerrar modal"
+                  >
+                    <X className="size-5" />
+                  </button>
                 </div>
 
-                <button
-                  onClick={() => setIsChartModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-blue-100/60 transition-colors"
-                >
-                  <X className="size-5" />
-                </button>
+                {/* Bottom Header: Name, Bold Numerical Value & CSV Downloads */}
+                <div className="absolute bottom-3 left-4 right-4 flex flex-col sm:flex-row sm:items-end justify-between gap-2 text-white">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold font-sans drop-shadow-xs">{activeVar.name}</h3>
+                    <div className="text-xl sm:text-2xl font-black font-mono tracking-tight text-white mt-0.5 tabular-nums">
+                      {formatVariableValue(activeVar)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        exportVariableHistoryToCsv(activeVar, chartData);
+                        triggerToast(`Descargando datos del período (${chartRange}) en CSV`);
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+                      title="Descargar datos del período en formato CSV para Excel o Google Sheets"
+                    >
+                      <Download className="size-3.5" />
+                      <span>CSV ({chartRange})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        exportVariableHistoryToCsv(activeVar);
+                        triggerToast(`Descargando historial completo de ${activeVar.name} en CSV`);
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+                      title="Descargar historial completo en CSV"
+                    >
+                      <Download className="size-3.5 text-slate-600" />
+                      <span className="hidden sm:inline">Historial completo</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Range Selector: 30D, 90D, 1Y, 3Y */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-600">Período:</span>
-                <div className="flex items-center gap-1 bg-blue-100/60 p-0.5 rounded-lg border border-blue-200/70">
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-xs font-mono text-slate-500">Período de análisis:</span>
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
                   {(['30D', '90D', '1Y', '3Y'] as const).map(range => (
                     <button
                       key={range}
                       onClick={() => setChartRange(range)}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                         chartRange === range
-                          ? 'bg-[#0f274a] text-blue-100 shadow-xs'
+                          ? 'bg-slate-900 text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-950'
                       }`}
                     >
@@ -2241,7 +2440,7 @@ export default function App() {
               {/* KPI Badges */}
               {chartStats && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70">
                     <div className="text-[10px] font-medium text-slate-500">Var {chartRange}</div>
                     <div className="text-xs font-extrabold font-mono mt-0.5">
                       <span className={chartStats.nominalDiff > 0 ? 'text-emerald-700' : chartStats.nominalDiff < 0 ? 'text-rose-700' : 'text-slate-700'}>
@@ -2250,21 +2449,21 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70">
                     <div className="text-[10px] font-medium text-slate-500">Inicio ({formatChartDate(chartStats.firstPoint.date)})</div>
                     <div className="text-xs font-extrabold font-mono text-slate-900 mt-0.5">
                       {chartStats.initialVal.toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')}
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70">
                     <div className="text-[10px] font-medium text-slate-500">Mínimo</div>
                     <div className="text-xs font-extrabold font-mono text-slate-900 mt-0.5">
                       {chartStats.minVal.toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')}
                     </div>
                   </div>
 
-                  <div className="p-2.5 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/70">
                     <div className="text-[10px] font-medium text-slate-500">Máximo</div>
                     <div className="text-xs font-extrabold font-mono text-slate-900 mt-0.5">
                       {chartStats.maxVal.toLocaleString(selectedCountry === 'BR' ? 'pt-BR' : 'es-AR')}
@@ -2274,16 +2473,16 @@ export default function App() {
               )}
 
               {/* Chart */}
-              <div className="h-64 w-full pt-2">
+              <div className="h-64 w-full pt-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#bfdbfe" strokeOpacity={0.4} />
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#e2e8f0" strokeOpacity={0.8} />
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatChartDate}
                       tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                       tickLine={false}
-                      axisLine={{ stroke: '#bfdbfe' }}
+                      axisLine={{ stroke: '#cbd5e1' }}
                     />
                     <YAxis
                       tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'JetBrains Mono' }}
@@ -2294,10 +2493,10 @@ export default function App() {
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#0a192f',
-                        borderColor: '#1e40af',
+                        backgroundColor: '#0f172a',
+                        borderColor: '#334155',
                         borderRadius: '8px',
-                        color: '#eff6ff',
+                        color: '#f8fafc',
                         fontSize: '11px',
                         fontFamily: 'JetBrains Mono'
                       }}
@@ -2317,27 +2516,33 @@ export default function App() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Description & Source Link */}
-              <div className="pt-2 border-t border-blue-100 flex items-center justify-between text-xs text-slate-600">
-                <p className="text-xs text-slate-600 leading-relaxed pr-4 font-mono">
-                  {activeVar.description}
-                </p>
-                <a
-                  href={activeVar.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 px-3 py-1.5 bg-blue-100/70 hover:bg-blue-200/80 text-blue-950 border border-blue-300 rounded-lg font-medium flex items-center gap-1 transition-colors"
-                >
-                  <span>Fuente</span>
-                  <ExternalLink className="size-3" />
-                </a>
+              {/* Visual Metadata & Source Link Bar (No long text) */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-slate-600 font-bold">{activeVar.source}</span>
+                  <span className="text-slate-300">·</span>
+                  <span className="font-mono text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 font-semibold">
+                    Auditado
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={activeVar.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-800 border border-slate-200 rounded-lg font-medium flex items-center gap-1 transition-colors"
+                  >
+                    <span>Fuente oficial</span>
+                    <ExternalLink className="size-3" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Minimal Sober Blue Footer */}
-        <footer className="pt-8 pb-4 border-t border-blue-200/60 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Minimal Clean Footer */}
+        <footer className="pt-8 pb-4 border-t border-slate-200/80 text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <EconoLogo
               country={selectedCountry}
@@ -2347,47 +2552,47 @@ export default function App() {
           <div className="flex items-center gap-2 text-slate-500 text-[11px] font-mono flex-wrap">
             {selectedCountry === 'BR' ? (
               <>
-                <span className="text-blue-800 font-semibold">BCB</span>
+                <span className="text-slate-800 font-semibold">BCB</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">IBGE</span>
+                <span className="text-slate-800 font-semibold">IBGE</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">B3</span>
+                <span className="text-slate-800 font-semibold">B3</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">FGV</span>
+                <span className="text-slate-800 font-semibold">FGV</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">Tesouro</span>
+                <span className="text-slate-800 font-semibold">Tesouro</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">ANFAVEA</span>
+                <span className="text-slate-800 font-semibold">ANFAVEA</span>
                 <span>·</span>
-                <span>13-10-2026</span>
+                <span>{formatToDayMonthYear(getArgentinaTodayDate())}</span>
               </>
             ) : (
               <>
-                <span className="text-blue-800 font-semibold">BNA</span>
+                <span className="text-slate-800 font-semibold">BNA</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">BCRA</span>
+                <span className="text-slate-800 font-semibold">BCRA</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">INDEC</span>
+                <span className="text-slate-800 font-semibold">INDEC</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">CIARA-CEC</span>
+                <span className="text-slate-800 font-semibold">CIARA-CEC</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">ADEFA</span>
+                <span className="text-slate-800 font-semibold">ADEFA</span>
                 <span>·</span>
-                <span className="text-blue-800 font-semibold">BYMA</span>
+                <span className="text-slate-800 font-semibold">BYMA</span>
                 <span>·</span>
-                <span>13-10-2026</span>
+                <span>{formatToDayMonthYear(getArgentinaTodayDate())}</span>
               </>
             )}
           </div>
         </footer>
       </main>
 
-      {/* Mobile Fixed Bottom Tab Bar in Sober Blue Palette */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#edf3fa]/95 backdrop-blur-md border-t border-blue-200/90 grid grid-cols-5 items-center h-16 px-1 shadow-xs">
+      {/* Mobile Fixed Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 grid grid-cols-5 items-center h-16 px-1 shadow-xs">
         <button
           onClick={() => setActiveTab('temas')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'temas' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'temas' ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Layers className="size-4" />
@@ -2397,7 +2602,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('cotizaciones')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'cotizaciones' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'cotizaciones' ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <span className="text-base font-mono font-bold leading-none">$</span>
@@ -2407,7 +2612,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('plazo_fijo')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'plazo_fijo' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'plazo_fijo' ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Landmark className="size-4" />
@@ -2417,7 +2622,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('tendencias')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'tendencias' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'tendencias' ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <TrendingUp className="size-4" />
@@ -2425,13 +2630,13 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('asesor')}
+          onClick={() => setActiveTab('fuentes')}
           className={`flex flex-col items-center justify-center h-full transition-colors ${
-            activeTab === 'asesor' ? 'text-blue-700 font-bold' : 'text-slate-500 hover:text-slate-800'
+            activeTab === 'fuentes' ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Sparkles className="size-4" />
-          <span className="text-[10px] tracking-tight mt-1">Asesor</span>
+          <BookOpen className="size-4" />
+          <span className="text-[10px] tracking-tight mt-1">Fuentes</span>
         </button>
       </nav>
     </div>
