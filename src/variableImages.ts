@@ -14,6 +14,8 @@ export const VARIABLE_IMAGES: Record<string, string> = {
   dolar_cripto: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=400&q=80', // Cripto / stablecoins
   reservas_brutas: 'https://images.unsplash.com/photo-1610375461246-83df859d849d?auto=format&fit=crop&w=400&q=80', // Lingotes de oro / bóveda
   liquidacion_ciara_cec: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80', // Granos y silos agrícolas
+  riesgo_pais_embi: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=400&q=80', // Riesgo País / Bonos y mercados
+  risco_pais_embi_br: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=400&q=80', // Risco País Brasil
 
   // Precios e Inflación
   ipc_nivel_general: 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80', // Carrito de supermercado

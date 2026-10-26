@@ -179,7 +179,8 @@ export const BRAZIL_ECONOMIC_TOPICS: EconomicTopic[] = [
       'bcb_dolar_turismo',
       'bcb_euro_ptax',
       'bcb_reservas_internacionais',
-      'abracam_fluxo_cambial'
+      'abracam_fluxo_cambial',
+      'risco_pais_embi_br'
     ]
   },
   {
@@ -451,6 +452,32 @@ export const BRAZIL_ECONOMIC_VARIABLES: EconomicVariable[] = [
       { date: '2026-07-01', value: 2790 },
       { date: '2026-10-01', value: 2850 }
     ], false, 0)
+  },
+  {
+    id: 'risco_pais_embi_br',
+    name: 'Risco País Brasil (EMBI+ JP Morgan)',
+    category: 'MONETARY_EXCHANGE',
+    topicId: 'cambiario_divisas',
+    sourceType: 'camara',
+    country: 'BR',
+    value: 198,
+    unit: 'pb',
+    frequency: 'Diaria',
+    source: 'JP Morgan / B3',
+    sourceUrl: 'https://www.b3.com.br',
+    description: 'Diferencial de taxa dos títulos soberanos da dívida externa brasileira em relação aos títulos do Tesouro dos EUA.',
+    lastUpdated: '2026-10-13',
+    history: createHistoricalSeries([
+      { date: '2023-10-13', value: 245 },
+      { date: '2024-03-15', value: 220 },
+      { date: '2024-06-15', value: 215 },
+      { date: '2024-10-15', value: 210 },
+      { date: '2025-06-15', value: 205 },
+      { date: '2025-12-15', value: 202 },
+      { date: '2026-03-15', value: 200 },
+      { date: '2026-07-15', value: 199 },
+      { date: '2026-10-13', value: 198 }
+    ], true, 0)
   },
 
   // ==========================================

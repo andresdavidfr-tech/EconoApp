@@ -119,7 +119,8 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
       'dolar_tarjeta',
       'dolar_cripto',
       'reservas_brutas',
-      'liquidacion_ciara_cec'
+      'liquidacion_ciara_cec',
+      'riesgo_pais_embi'
     ]
   },
   {
@@ -596,6 +597,36 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
       { date: '2026-08-15', value: 622 },
       { date: '2026-09-15', value: 624 },
       { date: '2026-10-13', value: 625 }
+    ], true, 0)
+  },
+  {
+    id: 'riesgo_pais_embi',
+    name: 'Riesgo País (EMBI+ JP Morgan)',
+    category: 'MONETARY_EXCHANGE',
+    topicId: 'cambiario_divisas',
+    sourceType: 'camara',
+    country: 'AR',
+    value: 1042,
+    unit: 'pb',
+    frequency: 'Diaria',
+    source: 'JP Morgan / BYMA',
+    sourceUrl: 'https://www.byma.com.ar',
+    description: 'Diferencial de tasa soberana argentina sobre los bonos del Tesoro de EE.UU. elaborado por JP Morgan.',
+    lastUpdated: '2026-10-13',
+    history: createHistoricalSeries([
+      { date: '2023-10-13', value: 2580 },
+      { date: '2023-12-13', value: 2150 },
+      { date: '2024-03-15', value: 1650 },
+      { date: '2024-06-15', value: 1420 },
+      { date: '2024-09-15', value: 1290 },
+      { date: '2024-12-15', value: 1180 },
+      { date: '2025-06-15', value: 1110 },
+      { date: '2025-12-15', value: 1075 },
+      { date: '2026-03-15', value: 1060 },
+      { date: '2026-07-15', value: 1055 },
+      { date: '2026-08-15', value: 1050 },
+      { date: '2026-09-15', value: 1046 },
+      { date: '2026-10-13', value: 1042 }
     ], true, 0)
   },
 
