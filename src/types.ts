@@ -55,6 +55,10 @@ export interface EconomicVariable {
   description: string;
   lastUpdated: string; // YYYY-MM-DD (fecha real del dato)
   history: HistoricalDataPoint[];
+  change?: number;      // Variación nominal con respecto al dato previo
+  changePercent?: number; // Variación porcentual con respecto al dato previo
+  comparisonLabel?: string; // Etiqueta explícita de comparación (ej: "vs. rueda anterior", "vs. mes anterior (m/m)")
+  prevPublishedValue?: number; // Cifra oficial anterior exacta
   live?: boolean;       // true si el valor viene de una fuente consultada en vivo
   fetchedAt?: string;   // ISO: cuándo se consultó la fuente por última vez
   verifiedAt?: string;  // YYYY-MM-DD: fecha en que se verificó manualmente contra una publicación

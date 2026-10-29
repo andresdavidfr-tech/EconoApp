@@ -56,44 +56,103 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
   const updatedVariables = variables.map((variable) => {
     const lastUpdated = variable.lastUpdated || todayStr;
     const missingDays = daysBetween(lastUpdated, todayStr);
+    const currentValue = variable.value;
 
     if (variable.frequency === 'Diaria') {
-      if (missingDays <= 0) {
-        return {
-          ...variable,
-          lastUpdated: todayStr
-        };
+      const historyCopy: HistoricalDataPoint[] = Array.isArray(variable.history)
+        ? [...variable.history]
+        : [];
+
+      if (historyCopy.length > 0) {
+        const lastIdx = historyCopy.length - 1;
+        const lastPoint = historyCopy[lastIdx];
+
+        if (missingDays <= 0 || lastPoint.date === todayStr) {
+          // Si ya está en la fecha de hoy, sincronizar el valor numérico exacto
+          historyCopy[lastIdx] = { date: todayStr, value: currentValue };
+        } else {
+          updatedCount++;
+          // Anexar días faltantes hasta hoy garantizando continuidad
+          const startVal = lastPoint.value;
+          for (let i = 1; i <= missingDays; i++) {
+            const stepDate = addDays(lastUpdated, i);
+            const fraction = i / missingDays;
+            const stepVal = Number((startVal + fraction * (currentValue - startVal)).toFixed(2));
+            historyCopy.push({
+              date: stepDate,
+              value: i === missingDays ? currentValue : stepVal
+            });
+          }
+        }
+      } else {
+        historyCopy.push({ date: todayStr, value: currentValue });
       }
 
-      updatedCount++;
-      const newHistory: HistoricalDataPoint[] = [...variable.history];
-      const currentValue = variable.value;
+      const trimmedHistory = historyCopy.slice(-1200);
 
-      // Anexar días hasta hoy
-      for (let i = 1; i <= missingDays; i++) {
-        const stepDate = addDays(lastUpdated, i);
-        newHistory.push({
-          date: stepDate,
-          value: currentValue
-        });
+      // Calcular cambio diario estrictamente contra la rueda / publicación anterior
+      let change = variable.change;
+      let changePercent = variable.changePercent;
+      let prevValue: number | undefined = variable.prevPublishedValue;
+
+      if (trimmedHistory.length >= 2) {
+        // El dato anterior es el penúltimo punto de la serie
+        prevValue = trimmedHistory[trimmedHistory.length - 2].value;
+        change = Number((currentValue - prevValue).toFixed(2));
+        changePercent = prevValue !== 0 ? Number(((change / prevValue) * 100).toFixed(2)) : 0;
       }
 
-      const trimmedHistory = newHistory.slice(-1200);
+      const compLabel = variable.source.toUpperCase().includes('BCRA')
+        ? 'vs. rueda anterior BCRA'
+        : 'vs. rueda anterior (24h)';
 
       return {
         ...variable,
         value: currentValue,
+        change: change !== undefined ? change : 0,
+        changePercent: changePercent !== undefined ? changePercent : 0,
+        comparisonLabel: compLabel,
+        prevPublishedValue: prevValue,
         lastUpdated: todayStr,
         history: trimmedHistory
       };
     } else {
-      // Periodic variables (Mensual / Trimestral): sincronizar la fecha de vigencia a hoy
+      // Periodic variables (Mensual / Trimestral)
+      const historyCopy = Array.isArray(variable.history) ? [...variable.history] : [];
+      if (historyCopy.length > 0) {
+        historyCopy[historyCopy.length - 1] = {
+          ...historyCopy[historyCopy.length - 1],
+          value: currentValue
+        };
+      }
+
+      // Calcular variación mensual mes a mes (t vs t-1) o trimestral
+      let change = variable.change;
+      let changePercent = variable.changePercent;
+      let prevValue: number | undefined = variable.prevPublishedValue;
+
+      if (historyCopy.length >= 2) {
+        prevValue = historyCopy[historyCopy.length - 2].value;
+        change = Number((currentValue - prevValue).toFixed(2));
+        changePercent = prevValue !== 0 ? Number(((change / prevValue) * 100).toFixed(2)) : 0;
+      }
+
+      const compLabel = variable.frequency === 'Mensual'
+        ? 'vs. mes anterior (m/m)'
+        : 'vs. período anterior (t/t)';
+
       if (variable.lastUpdated !== todayStr) {
         updatedCount++;
       }
       return {
         ...variable,
-        lastUpdated: todayStr
+        value: currentValue,
+        change: change !== undefined ? change : 0,
+        changePercent: changePercent !== undefined ? changePercent : 0,
+        comparisonLabel: compLabel,
+        prevPublishedValue: prevValue,
+        lastUpdated: todayStr,
+        history: historyCopy
       };
     }
   });

@@ -245,7 +245,7 @@ export function TopicTechVisualizer({
       <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/30" />
 
       {/* 4. Etiqueta abreviada en esquina */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 font-mono text-[9px] text-blue-100/80 font-semibold tracking-wider">
+      <div className="absolute top-3 right-3 flex items-center gap-1.5 font-sans text-[9px] text-blue-100/80 font-medium tracking-wider">
         <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: palette.stroke }} />
         <span>{palette.label}</span>
       </div>

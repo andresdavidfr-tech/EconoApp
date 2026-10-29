@@ -1,24 +1,13 @@
 import { BankFixedTermRate } from './types';
 import { getArgentinaTodayDate } from './dailySync';
 
-// Tasas oficiales extraídas de la Tabla Comparativa del BCRA (Régimen de Transparencia de Plazos Fijos para Personas Humanas)
+// Tasas oficiales extraídas de la Tabla Comparativa del BCRA (Régimen de Transparencia de Plazos Fijos para Personas Humanas a 30 días)
 export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
-  {
-    id: 'banco_voii',
-    bankName: 'Banco VOII S.A.',
-    shortName: 'VOII',
-    tna: 39.25,
-    channel: 'Web / No Clientes y Clientes',
-    type: 'privado',
-    nonClientOnline: true,
-    minAmount: 1000,
-    lastUpdated: '2026-10-13'
-  },
   {
     id: 'banco_cmf',
     bankName: 'Banco CMF S.A.',
     shortName: 'CMF',
-    tna: 37.25,
+    tna: 24.00,
     channel: 'Web / No Clientes y Clientes',
     type: 'privado',
     nonClientOnline: true,
@@ -29,7 +18,7 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_bica',
     bankName: 'Banco BICA S.A.',
     shortName: 'BICA',
-    tna: 37.00,
+    tna: 24.00,
     channel: 'Web / No Clientes y Clientes',
     type: 'privado',
     nonClientOnline: true,
@@ -37,57 +26,24 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     lastUpdated: '2026-10-13'
   },
   {
-    id: 'banco_nacion',
-    bankName: 'Banco de la Nación Argentina',
-    shortName: 'BNA',
-    tna: 37.00,
-    channel: 'BNA+ / Home Banking BNA',
-    type: 'publico',
+    id: 'banco_voii',
+    bankName: 'Banco VOII S.A.',
+    shortName: 'VOII',
+    tna: 23.00,
+    channel: 'Web / No Clientes y Clientes',
+    type: 'privado',
     nonClientOnline: true,
-    minAmount: 500,
+    minAmount: 1000,
     lastUpdated: '2026-10-13'
   },
   {
     id: 'banco_meridian',
     bankName: 'Banco Meridian S.A.',
     shortName: 'Meridian',
-    tna: 36.00,
+    tna: 23.00,
     channel: 'Web / No Clientes y Clientes',
     type: 'privado',
     nonClientOnline: true,
-    minAmount: 1000,
-    lastUpdated: '2026-10-13'
-  },
-  {
-    id: 'banco_hipotecario',
-    bankName: 'Banco Hipotecario S.A.',
-    shortName: 'Hipotecario',
-    tna: 36.00,
-    channel: 'Home Banking / App móvil',
-    type: 'privado',
-    nonClientOnline: true,
-    minAmount: 1000,
-    lastUpdated: '2026-10-13'
-  },
-  {
-    id: 'banco_credicoop',
-    bankName: 'Banco Credicoop C.L.',
-    shortName: 'Credicoop',
-    tna: 34.00,
-    channel: 'Banca Personal Internet',
-    type: 'privado',
-    nonClientOnline: true,
-    minAmount: 1000,
-    lastUpdated: '2026-10-13'
-  },
-  {
-    id: 'banco_macro',
-    bankName: 'Banco Macro S.A.',
-    shortName: 'Macro',
-    tna: 34.00,
-    channel: 'App Macro / Banca Internet',
-    type: 'privado',
-    nonClientOnline: false,
     minAmount: 1000,
     lastUpdated: '2026-10-13'
   },
@@ -95,7 +51,7 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_del_sol',
     bankName: 'Banco del Sol S.A.',
     shortName: 'Del Sol',
-    tna: 33.00,
+    tna: 23.00,
     channel: 'App Móvil / Web',
     type: 'digital',
     nonClientOnline: true,
@@ -106,9 +62,64 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_provincia',
     bankName: 'Banco de la Provincia de Buenos Aires',
     shortName: 'BAPRO',
-    tna: 32.00,
+    tna: 21.00,
     channel: 'BIP / Cuenta DNI',
     type: 'publico',
+    nonClientOnline: true,
+    minAmount: 1000,
+    lastUpdated: '2026-10-13'
+  },
+  {
+    id: 'banco_macro',
+    bankName: 'Banco Macro S.A.',
+    shortName: 'Macro',
+    tna: 21.00,
+    channel: 'App Macro / Banca Internet',
+    type: 'privado',
+    nonClientOnline: false,
+    minAmount: 1000,
+    lastUpdated: '2026-10-13'
+  },
+  {
+    id: 'banco_nacion',
+    bankName: 'Banco de la Nación Argentina',
+    shortName: 'BNA',
+    tna: 19.25,
+    channel: 'BNA+ / Home Banking BNA',
+    type: 'publico',
+    nonClientOnline: true,
+    minAmount: 500,
+    lastUpdated: '2026-10-13'
+  },
+  {
+    id: 'banco_bbva',
+    bankName: 'BBVA Argentina S.A.',
+    shortName: 'BBVA',
+    tna: 19.00,
+    channel: 'BBVA Móvil / Banca Online',
+    type: 'privado',
+    nonClientOnline: false,
+    minAmount: 1000,
+    lastUpdated: '2026-10-13'
+  },
+  {
+    id: 'banco_hipotecario',
+    bankName: 'Banco Hipotecario S.A.',
+    shortName: 'Hipotecario',
+    tna: 18.50,
+    channel: 'Home Banking / App móvil',
+    type: 'privado',
+    nonClientOnline: true,
+    minAmount: 1000,
+    lastUpdated: '2026-10-13'
+  },
+  {
+    id: 'banco_credicoop',
+    bankName: 'Banco Credicoop C.L.',
+    shortName: 'Credicoop',
+    tna: 18.50,
+    channel: 'Banca Personal Internet',
+    type: 'privado',
     nonClientOnline: true,
     minAmount: 1000,
     lastUpdated: '2026-10-13'
@@ -117,7 +128,7 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_galicia',
     bankName: 'Banco Galicia y Buenos Aires S.A.U.',
     shortName: 'Galicia',
-    tna: 32.00,
+    tna: 18.25,
     channel: 'App Galicia / Online Banking',
     type: 'privado',
     nonClientOnline: false,
@@ -128,7 +139,7 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_icbc',
     bankName: 'ICBC Argentina',
     shortName: 'ICBC',
-    tna: 32.00,
+    tna: 17.90,
     channel: 'Access Banking / App ICBC',
     type: 'privado',
     nonClientOnline: false,
@@ -136,11 +147,11 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     lastUpdated: '2026-10-13'
   },
   {
-    id: 'banco_bbva',
-    bankName: 'BBVA Argentina S.A.',
-    shortName: 'BBVA',
-    tna: 31.50,
-    channel: 'BBVA Móvil / Banca Online',
+    id: 'banco_santander',
+    bankName: 'Banco Santander Argentina S.A.',
+    shortName: 'Santander',
+    tna: 17.00,
+    channel: 'Online Banking / App Santander',
     type: 'privado',
     nonClientOnline: false,
     minAmount: 1000,
@@ -150,7 +161,7 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_ciudad',
     bankName: 'Banco de la Ciudad de Buenos Aires',
     shortName: 'Ciudad',
-    tna: 31.00,
+    tna: 17.00,
     channel: 'Autoservicio / Home Banking',
     type: 'publico',
     nonClientOnline: true,
@@ -161,19 +172,8 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
     id: 'banco_patagonia',
     bankName: 'Banco Patagonia S.A.',
     shortName: 'Patagonia',
-    tna: 31.00,
+    tna: 16.00,
     channel: 'Patagonia e-Bank',
-    type: 'privado',
-    nonClientOnline: false,
-    minAmount: 1000,
-    lastUpdated: '2026-10-13'
-  },
-  {
-    id: 'banco_santander',
-    bankName: 'Banco Santander Argentina S.A.',
-    shortName: 'Santander',
-    tna: 30.00,
-    channel: 'Online Banking / App Santander',
     type: 'privado',
     nonClientOnline: false,
     minAmount: 1000,
@@ -181,9 +181,23 @@ export const INITIAL_BANK_RATES: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [
   }
 ];
 
+// Almacén mutable en memoria para permitir sincronización dinámica de tasas
+export let activeBankRatesStore: Omit<BankFixedTermRate, 'tem' | 'tea'>[] = [...INITIAL_BANK_RATES];
+
+export function updateActiveBankRate(bankId: string, newTna: number, dateStr?: string) {
+  const idx = activeBankRatesStore.findIndex(b => b.id === bankId);
+  if (idx !== -1) {
+    activeBankRatesStore[idx] = {
+      ...activeBankRatesStore[idx],
+      tna: newTna,
+      lastUpdated: dateStr || getArgentinaTodayDate()
+    };
+  }
+}
+
 export function computeBankRates(todayStr?: string): BankFixedTermRate[] {
   const date = todayStr || getArgentinaTodayDate();
-  return INITIAL_BANK_RATES.map(b => {
+  return activeBankRatesStore.map(b => {
     // Rendimiento mensual a 30 días: TEM = (TNA * 30) / 365
     const tem = parseFloat(((b.tna * 30) / 365).toFixed(2));
     // Tasa Efectiva Anual (TEA) con capitalización a 30 días s/ normativa BCRA: TEA = ((1 + (TNA/100) * (30/365))^(365/30) - 1) * 100

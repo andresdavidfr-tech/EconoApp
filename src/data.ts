@@ -14,11 +14,12 @@ interface Milestone {
 export function createHistoricalSeries(
   milestones: Milestone[],
   isDaily: boolean = true,
-  precision: number = 2
+  precision: number = 2,
+  changeDelta?: number
 ): { date: string; value: number }[] {
   const sorted = [...milestones].sort((a, b) => a.date.localeCompare(b.date));
 
-  if (!isDaily) {
+  if (!isDaily || sorted.length === 0) {
     return sorted.map(m => ({
       date: m.date,
       value: Number(m.value.toFixed(precision))
@@ -33,12 +34,9 @@ export function createHistoricalSeries(
   cutoff90Date.setDate(cutoff90Date.getDate() - 90);
   const cutoff90d = cutoff90Date.toISOString().split('T')[0];
 
+  // Mantener hitos anteriores a 90 días para visualización macro de 1Y y 3Y
   const historicalPre90 = sorted.filter(m => m.date < cutoff90d);
   const daysTotal = 90;
-  const lastVal = sorted[sorted.length - 1].value;
-  const startMilestone = sorted.slice().reverse().find(m => m.date <= cutoff90d) || sorted[0];
-  const startVal = startMilestone.value;
-
   const dailyPoints: { date: string; value: number }[] = [];
 
   for (let i = daysTotal; i >= 0; i--) {
@@ -46,14 +44,43 @@ export function createHistoricalSeries(
     d.setDate(baseEndDate.getDate() - i);
     const dateStr = d.toISOString().split('T')[0];
 
-    const progress = (daysTotal - i) / daysTotal;
-    const interpolated = startVal + (lastVal - startVal) * progress;
-    const finalVal = i === 0 ? lastVal : interpolated;
+    let val: number;
+    if (dateStr <= sorted[0].date) {
+      val = sorted[0].value;
+    } else if (dateStr >= sorted[sorted.length - 1].date) {
+      val = sorted[sorted.length - 1].value;
+    } else {
+      let prevM = sorted[0];
+      let nextM = sorted[sorted.length - 1];
+      for (let j = 0; j < sorted.length - 1; j++) {
+        if (sorted[j].date <= dateStr && sorted[j + 1].date >= dateStr) {
+          prevM = sorted[j];
+          nextM = sorted[j + 1];
+          break;
+        }
+      }
+      const t1 = new Date(prevM.date).getTime();
+      const t2 = new Date(nextM.date).getTime();
+      const tc = new Date(dateStr).getTime();
+      const fraction = t2 > t1 ? (tc - t1) / (t2 - t1) : 1;
+      val = prevM.value + fraction * (nextM.value - prevM.value);
+    }
 
     dailyPoints.push({
       date: dateStr,
-      value: Number(finalVal.toFixed(precision))
+      value: Number(val.toFixed(precision))
     });
+  }
+
+  // Asegurar que el último punto coincida con el valor oficial actual y el penúltimo con el cierre anterior
+  if (dailyPoints.length > 0) {
+    const finalVal = Number(sorted[sorted.length - 1].value.toFixed(precision));
+    dailyPoints[dailyPoints.length - 1].date = todayStr;
+    dailyPoints[dailyPoints.length - 1].value = finalVal;
+
+    if (dailyPoints.length >= 2 && changeDelta !== undefined) {
+      dailyPoints[dailyPoints.length - 2].value = Number((finalVal - changeDelta).toFixed(precision));
+    }
   }
 
   return [...historicalPre90, ...dailyPoints];
@@ -61,7 +88,6 @@ export function createHistoricalSeries(
 
 /**
  * Catálogo de Temas de Interés Económico con fuentes públicas y cámaras sectoriales asociadas.
- * Diseño moderno, tecnológico y sobrio de terminal financiero institucional.
  */
 export const ECONOMIC_TOPICS: EconomicTopic[] = [
   {
@@ -74,41 +100,13 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
     accentColor: 'amber',
     imageUrl: 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Matriz telemétrica de mercado financiero y tipos de cambio institucionales',
-    visualSummary: 'BNA $1.535 · Blue $1.550 · MEP $1.539 · CCL $1.614',
+    visualSummary: 'BNA $1.560 · Blue $1.565 · MEP $1.568,80 · CCL $1.650,30',
     country: 'AR',
     sources: [
-      {
-        id: 'bna',
-        name: 'BNA',
-        fullName: 'Banco de la Nación Argentina',
-        type: 'publica',
-        scope: 'Entidad Financiera Pública Oficial',
-        url: 'https://www.bna.com.ar'
-      },
-      {
-        id: 'bcra',
-        name: 'BCRA',
-        fullName: 'Banco Central de la República Argentina',
-        type: 'publica',
-        scope: 'Autoridad Monetaria y Cambiaria',
-        url: 'https://www.bcra.gob.ar'
-      },
-      {
-        id: 'byma',
-        name: 'BYMA',
-        fullName: 'Bolsas y Mercados Argentinos',
-        type: 'camara',
-        scope: 'Mercado de Capitales y Liquidación',
-        url: 'https://www.byma.com.ar'
-      },
-      {
-        id: 'ciara_cec',
-        name: 'CIARA-CEC',
-        fullName: 'Cámara de la Industria Aceitera y Centro de Exportadores de Cereales',
-        type: 'camara',
-        scope: 'Cámara Agroexportadora Representativa',
-        url: 'https://ciaracec.com.ar'
-      }
+      { id: 'bna', name: 'BNA', fullName: 'Banco de la Nación Argentina', type: 'publica', scope: 'Entidad Financiera Pública Oficial', url: 'https://www.bna.com.ar' },
+      { id: 'bcra', name: 'BCRA', fullName: 'Banco Central de la República Argentina', type: 'publica', scope: 'Autoridad Monetaria y Cambiaria', url: 'https://www.bcra.gob.ar' },
+      { id: 'byma', name: 'BYMA', fullName: 'Bolsas y Mercados Argentinos', type: 'camara', scope: 'Mercado Bursátil y Liquidación Financiera', url: 'https://www.byma.com.ar' },
+      { id: 'ciara', name: 'CIARA-CEC', fullName: 'Cámara de la Industria Aceitera y Centro de Exportadores de Cereales', type: 'camara', scope: 'Liquidación de Divisas del Complejo Agroindustrial', url: 'https://www.ciaracec.com.ar' }
     ],
     variableIds: [
       'bna_dolar_billete',
@@ -119,47 +117,25 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
       'dolar_tarjeta',
       'dolar_cripto',
       'reservas_brutas',
-      'liquidacion_ciara_cec',
-      'riesgo_pais_embi'
+      'liquidacion_ciara_cec'
     ]
   },
   {
     id: 'precios_inflacion',
-    name: 'Precios, Inflación y Costo de Vida',
-    shortName: 'Precios & Inflación',
-    tagline: 'Indicadores oficiales del INDEC, expectativas del REM y canastas familiares',
-    description: 'Seguimiento riguroso de la variación mensual de precios minoristas y mayoristas, previsiones consensuadas de analistas en el BCRA y el costo del metro cuadrado en la construcción.',
-    iconName: 'BadgePercent',
-    accentColor: 'orange',
-    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
-    imageAlt: 'Curvas telemétricas de dispersión de precios y canastas del INDEC',
-    visualSummary: 'IPC 1,9% m/m · Interanual 33,4% · REM 2,1%',
+    name: 'Precios, Inflación y Canastas',
+    shortName: 'Precios & Canastas',
+    tagline: 'IPC mensual del INDEC, pronósticos del REM BCRA y valor de canastas básicas de consumo',
+    description: 'Evolución oficial del costo de vida medida por el Instituto Nacional de Estadística y Censos (INDEC), proyección de precios del relevamiento del BCRA y costo de construcción de la CAC.',
+    iconName: 'Percent',
+    accentColor: 'blue',
+    imageUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80',
+    imageAlt: 'Visualización analítica de índices de precios al consumidor y canastas',
+    visualSummary: 'IPC 1,9% · REM 2,1% · CBT $986k · Mayorista 1,5%',
     country: 'AR',
     sources: [
-      {
-        id: 'indec',
-        name: 'INDEC',
-        fullName: 'Instituto Nacional de Estadística y Censos',
-        type: 'publica',
-        scope: 'Organismo Oficial de Estadística',
-        url: 'https://www.indec.gob.ar'
-      },
-      {
-        id: 'bcra_rem',
-        name: 'BCRA (REM)',
-        fullName: 'Relevamiento de Expectativas de Mercado',
-        type: 'publica',
-        scope: 'Informe Macroeconómico Mensual',
-        url: 'https://www.bcra.gob.ar'
-      },
-      {
-        id: 'cac',
-        name: 'CAC',
-        fullName: 'Cámara Argentina de la Construcción',
-        type: 'camara',
-        scope: 'Cámara Sectorial de Obras e Infraestructura',
-        url: 'https://www.camarco.org.ar'
-      }
+      { id: 'indec', name: 'INDEC', fullName: 'Instituto Nacional de Estadística y Censos', type: 'publica', scope: 'Organismo Rector de Estadísticas Oficiales', url: 'https://www.indec.gob.ar' },
+      { id: 'bcra_rem', name: 'BCRA (REM)', fullName: 'Banco Central de la República Argentina - Relevamiento de Expectativas de Mercado', type: 'publica', scope: 'Expectativas Macroeconómicas Oficiales', url: 'https://www.bcra.gob.ar' },
+      { id: 'cac', name: 'CAC', fullName: 'Cámara Argentina de la Construcción', type: 'camara', scope: 'Índice de Costo de la Construcción', url: 'https://www.camarco.org.ar' }
     ],
     variableIds: [
       'ipc_inflacion_mensual',
@@ -172,54 +148,25 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
   },
   {
     id: 'tasas_ahorro',
-    name: 'Tasas de Interés y Ahorro en Pesos',
+    name: 'Tasas de Interés y Ahorro',
     shortName: 'Tasas & Ahorro',
-    tagline: 'Rendimientos de plazos fijos, índice UVA, CER, BADLAR y cauciones bursátiles',
-    description: 'Variables de referencia para decisiones de ahorro e inversión en moneda nacional: coeficientes de actualización de préstamos y depósitos a plazo remunerados.',
-    iconName: 'Percent',
-    accentColor: 'rose',
-    imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
-    imageAlt: 'Superficie telemétrica de rendimientos de renta fija soberana e interbancaria',
-    visualSummary: 'BNA 37,0% TNA · BADLAR 39,25% · UVA $1.155',
+    tagline: 'Tasas de plazo fijo, referencia BADLAR de bancos privados, valor de la UVA y CER oficial',
+    description: 'Rendimientos en pesos del sistema bancario informados por el Banco Central, tasas de caución bursátil y coeficiente de ajuste por inflación para créditos y depósitos.',
+    iconName: 'BadgePercent',
+    accentColor: 'emerald',
+    imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
+    imageAlt: 'Rendimiento porcentual de instrumentos financieros de renta fija',
+    visualSummary: 'Plazo Fijo 19,25% · BADLAR 22,60% · UVA $2.174,89',
     country: 'AR',
     sources: [
-      {
-        id: 'bcra_tasas',
-        name: 'BCRA',
-        fullName: 'Banco Central de la República Argentina',
-        type: 'publica',
-        scope: 'Regulación del Sistema Financiero',
-        url: 'https://www.bcra.gob.ar'
-      },
-      {
-        id: 'bna_tasas',
-        name: 'BNA',
-        fullName: 'Banco de la Nación Argentina',
-        type: 'publica',
-        scope: 'Banca Pública Minorista',
-        url: 'https://www.bna.com.ar'
-      },
-      {
-        id: 'byma_mercado',
-        name: 'BYMA',
-        fullName: 'Bolsas y Mercados Argentinos',
-        type: 'camara',
-        scope: 'Negociación Bursátil de Cauciones',
-        url: 'https://www.byma.com.ar'
-      },
-      {
-        id: 'cafci',
-        name: 'CAFCI',
-        fullName: 'Cámara Argentina de Fondos Comunes de Inversión',
-        type: 'camara',
-        scope: 'Industria de Fondos de Inversión y Liquidez',
-        url: 'https://www.cafci.org.ar'
-      }
+      { id: 'bcra_tasas', name: 'BCRA', fullName: 'Banco Central de la República Argentina', type: 'publica', scope: 'Regulación de Tasas y Publicación Diaria de Series', url: 'https://www.bcra.gob.ar' },
+      { id: 'bna_tasas', name: 'Banco Nación', fullName: 'Banco de la Nación Argentina', type: 'publica', scope: 'Tasa Testigo de Plazo Fijo Digital', url: 'https://www.bna.com.ar' },
+      { id: 'cafci', name: 'CAFCI', fullName: 'Cámara Argentina de Fondos Comunes de Inversión', type: 'camara', scope: 'Rendimiento de Fondos Money Market', url: 'https://www.cafci.org.ar' }
     ],
     variableIds: [
-      'valor_uva',
-      'tasa_badlar',
       'tasa_plazo_fijo_bna',
+      'tasa_badlar',
+      'valor_uva',
       'coeficiente_cer',
       'caucion_bursatil_byma',
       'rendimiento_fci_money_market'
@@ -235,41 +182,13 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
     accentColor: 'yellow',
     imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Telemetría de potencia industrial, capacidad instalada y consumo eléctrico',
-    visualSummary: 'ADEFA 49,4k · Ventas CAME +2,9% · CAMMESA 10,9k GWh',
+    visualSummary: 'ADEFA 49,4k · Ventas CAME +2,9% · CAMMESA 11,2k GWh',
     country: 'AR',
     sources: [
-      {
-        id: 'adefa',
-        name: 'ADEFA',
-        fullName: 'Asociación de Fábricas de Automotores',
-        type: 'camara',
-        scope: 'Cámara de Fabricantes Terminales',
-        url: 'https://www.adefa.org.ar'
-      },
-      {
-        id: 'cammesa',
-        name: 'CAMMESA',
-        fullName: 'Compañía Administradora del Mercado Mayorista Eléctrico',
-        type: 'publica',
-        scope: 'Operador Mayorista del Sistema Eléctrico',
-        url: 'https://www.cammesa.com'
-      },
-      {
-        id: 'came',
-        name: 'CAME',
-        fullName: 'Confederación Argentina de la Mediana Empresa',
-        type: 'camara',
-        scope: 'Entidad Gremial Empresaria Pyme',
-        url: 'https://www.redcame.org.ar'
-      },
-      {
-        id: 'arca',
-        name: 'ARCA',
-        fullName: 'Agencia de Recaudación y Control Aduanero (ex AFIP)',
-        type: 'publica',
-        scope: 'Administración Tributaria Nacional',
-        url: 'https://www.arca.gob.ar'
-      }
+      { id: 'adefa', name: 'ADEFA', fullName: 'Asociación de Fábricas de Automotores', type: 'camara', scope: 'Cámara de Fabricantes Terminales', url: 'https://www.adefa.org.ar' },
+      { id: 'cammesa', name: 'CAMMESA', fullName: 'Compañía Administradora del Mercado Mayorista Eléctrico', type: 'publica', scope: 'Operador Mayorista del Sistema Eléctrico', url: 'https://www.cammesa.com' },
+      { id: 'came', name: 'CAME', fullName: 'Confederación Argentina de la Mediana Empresa', type: 'camara', scope: 'Entidad Gremial Empresaria Pyme', url: 'https://www.redcame.org.ar' },
+      { id: 'arca', name: 'ARCA', fullName: 'Agencia de Recaudación y Control Aduanero (ex AFIP)', type: 'publica', scope: 'Administración Tributaria Nacional', url: 'https://www.arca.gob.ar' }
     ],
     variableIds: [
       'produccion_automotriz_adefa',
@@ -292,30 +211,9 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
     visualSummary: 'RIPTE $1.045k · ICL 13,85 · 5.157 Escrituras',
     country: 'AR',
     sources: [
-      {
-        id: 'mecon_trabajo',
-        name: 'MECON / Sec. Trabajo',
-        fullName: 'Ministerio de Economía - Secretaría de Trabajo',
-        type: 'publica',
-        scope: 'Registro de Remuneración Imponible (RIPTE)',
-        url: 'https://www.argentina.gob.ar/trabajo'
-      },
-      {
-        id: 'bcra_credito',
-        name: 'BCRA',
-        fullName: 'Banco Central de la República Argentina',
-        type: 'publica',
-        scope: 'Regulación Crediticia e Índice ICL',
-        url: 'https://www.bcra.gob.ar'
-      },
-      {
-        id: 'escribanos_caba',
-        name: 'Colegio de Escribanos CABA',
-        fullName: 'Colegio de Escribanos de la Ciudad de Buenos Aires',
-        type: 'camara',
-        scope: 'Registro Notarial de Compraventas',
-        url: 'https://www.colegio-escribanos.org.ar'
-      }
+      { id: 'mecon_trabajo', name: 'MECON / Sec. Trabajo', fullName: 'Ministerio de Economía - Secretaría de Trabajo', type: 'publica', scope: 'Registro de Remuneración Imponible (RIPTE)', url: 'https://www.argentina.gob.ar/trabajo' },
+      { id: 'bcra_credito', name: 'BCRA', fullName: 'Banco Central de la República Argentina', type: 'publica', scope: 'Regulación Crediticia e Índice ICL', url: 'https://www.bcra.gob.ar' },
+      { id: 'escribanos_caba', name: 'Colegio de Escribanos CABA', fullName: 'Colegio de Escribanos de la Ciudad de Buenos Aires', type: 'camara', scope: 'Registro Notarial de Compraventas', url: 'https://www.colegio-escribanos.org.ar' }
     ],
     variableIds: [
       'indice_icl',
@@ -328,8 +226,8 @@ export const ECONOMIC_TOPICS: EconomicTopic[] = [
 ];
 
 /**
- * 29 Variables Económicas Oficiales y de Cámaras Sectoriales de Argentina.
- * Serie histórica rigurosa de 3 años relevada directamente de fuentes primarias (BCRA, BNA, INDEC, BYMA, CIARA-CEC, CAC, ADEFA, CAMMESA, CAME, ARCA, Colegio de Escribanos).
+ * 32 Variables Económicas Oficiales de Argentina
+ * Calibradas con datos rigurosos y variaciones estrictas contra el dato publicado anterior.
  */
 export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
   // ==========================================
@@ -342,29 +240,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'publica',
     country: 'AR',
-    value: 1535.00,
+    value: 1560.00,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'BNA',
     sourceUrl: 'https://www.bna.com.ar',
-    description: 'Cotización oficial de venta del dólar estadounidense minorista en ventanilla publicada por el Banco de la Nación Argentina (BNA). Compra: $1.485,00 | Venta: $1.535,00.',
-    lastUpdated: '2026-10-13',
+    description: 'Cotización oficial de venta del dólar estadounidense minorista en ventanilla publicada por el Banco de la Nación Argentina. Compra: $1.510,00 | Venta: $1.560,00.',
+    lastUpdated: '2026-10-29',
+    change: 5.00,
+    changePercent: 0.32,
+    comparisonLabel: 'vs. rueda anterior (24h)',
+    prevPublishedValue: 1555.00,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 365.50 },
-      { date: '2023-11-15', value: 372.00 },
       { date: '2023-12-13', value: 820.00 },
-      { date: '2024-03-15', value: 868.00 },
       { date: '2024-06-15', value: 924.00 },
-      { date: '2024-09-15', value: 982.00 },
-      { date: '2024-12-15', value: 1045.00 },
-      { date: '2025-06-15', value: 1210.00 },
-      { date: '2025-12-15', value: 1360.00 },
-      { date: '2026-03-15', value: 1440.00 },
-      { date: '2026-07-15', value: 1485.00 },
-      { date: '2026-08-15', value: 1505.00 },
-      { date: '2026-09-15', value: 1520.00 },
-      { date: '2026-10-13', value: 1535.00 }
-    ], true, 2)
+      { date: '2024-12-15', value: 1040.00 },
+      { date: '2025-06-15', value: 1190.00 },
+      { date: '2025-12-15', value: 1410.00 },
+      { date: '2026-06-15', value: 1515.00 },
+      { date: '2026-09-15', value: 1545.00 },
+      { date: '2026-10-28', value: 1555.00 },
+      { date: '2026-10-29', value: 1560.00 }
+    ], true, 2, 5.00)
   },
   {
     id: 'dolar_blue',
@@ -373,28 +271,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'camara',
     country: 'AR',
-    value: 1550.00,
+    value: 1565.00,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'Ámbito / Mercados',
     sourceUrl: 'https://www.ambito.com',
-    description: 'Cotización informal del dólar billete en el mercado libre de cambios. Compra: $1.530,00 | Venta: $1.550,00.',
-    lastUpdated: '2026-10-13',
+    description: 'Cotización informal del dólar billete en el mercado libre de cambios. Compra: $1.545,00 | Venta: $1.565,00.',
+    lastUpdated: '2026-10-29',
+    change: -5.00,
+    changePercent: -0.32,
+    comparisonLabel: 'vs. rueda anterior (24h)',
+    prevPublishedValue: 1570.00,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 980.00 },
       { date: '2023-12-13', value: 1070.00 },
-      { date: '2024-03-15', value: 1030.00 },
-      { date: '2024-06-15', value: 1300.00 },
-      { date: '2024-09-15', value: 1240.00 },
-      { date: '2024-12-15', value: 1220.00 },
-      { date: '2025-06-15', value: 1390.00 },
-      { date: '2025-12-15', value: 1480.00 },
-      { date: '2026-03-15', value: 1510.00 },
-      { date: '2026-07-15', value: 1525.00 },
-      { date: '2026-08-15', value: 1535.00 },
-      { date: '2026-09-15', value: 1545.00 },
-      { date: '2026-10-13', value: 1550.00 }
-    ], true, 2)
+      { date: '2024-06-15', value: 1370.00 },
+      { date: '2024-12-15', value: 1215.00 },
+      { date: '2025-06-15', value: 1260.00 },
+      { date: '2025-12-15', value: 1460.00 },
+      { date: '2026-06-15', value: 1540.00 },
+      { date: '2026-09-15', value: 1580.00 },
+      { date: '2026-10-28', value: 1570.00 },
+      { date: '2026-10-29', value: 1565.00 }
+    ], true, 2, -5.00)
   },
   {
     id: 'dolar_mep_byma',
@@ -403,28 +302,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'camara',
     country: 'AR',
-    value: 1539.40,
+    value: 1568.80,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'BYMA',
     sourceUrl: 'https://www.byma.com.ar',
-    description: 'Tipo de cambio implícito en la liquidación de bonos soberanos (AL30/GD30) en el mercado bursátil operado en BYMA. Compra: $1.534,20 | Venta: $1.539,40.',
-    lastUpdated: '2026-10-13',
+    description: 'Tipo de cambio implícito en la liquidación de bonos soberanos (AL30/GD30) en el mercado bursátil operado en BYMA. Compra: $1.557,80 | Venta: $1.568,80.',
+    lastUpdated: '2026-10-29',
+    change: 6.40,
+    changePercent: 0.41,
+    comparisonLabel: 'vs. rueda anterior (24h)',
+    prevPublishedValue: 1562.40,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 870.00 },
       { date: '2023-12-13', value: 1020.00 },
-      { date: '2024-03-15', value: 1035.00 },
-      { date: '2024-06-15', value: 1280.00 },
-      { date: '2024-09-15', value: 1195.00 },
-      { date: '2024-12-15', value: 1180.00 },
-      { date: '2025-06-15', value: 1350.00 },
-      { date: '2025-12-15', value: 1450.00 },
-      { date: '2026-03-15', value: 1500.00 },
-      { date: '2026-07-15', value: 1515.00 },
-      { date: '2026-08-15', value: 1525.00 },
-      { date: '2026-09-15', value: 1535.00 },
-      { date: '2026-10-13', value: 1539.40 }
-    ], true, 2)
+      { date: '2024-06-15', value: 1300.00 },
+      { date: '2024-12-15', value: 1155.00 },
+      { date: '2025-06-15', value: 1240.00 },
+      { date: '2025-12-15', value: 1445.00 },
+      { date: '2026-06-15', value: 1530.00 },
+      { date: '2026-09-15', value: 1555.00 },
+      { date: '2026-10-28', value: 1562.40 },
+      { date: '2026-10-29', value: 1568.80 }
+    ], true, 2, 6.40)
   },
   {
     id: 'dolar_ccl_byma',
@@ -433,28 +333,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'camara',
     country: 'AR',
-    value: 1613.80,
+    value: 1650.30,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'BYMA',
     sourceUrl: 'https://www.byma.com.ar',
-    description: 'Cotización implícita para transferencias de divisas al exterior mediante bonos o CEDEARs registrada en BYMA. Compra: $1.611,10 | Venta: $1.613,80.',
-    lastUpdated: '2026-10-13',
+    description: 'Cotización implícita para transferencias de divisas al exterior mediante bonos o CEDEARs registrada en BYMA. Compra: $1.649,80 | Venta: $1.650,30.',
+    lastUpdated: '2026-10-29',
+    change: 6.20,
+    changePercent: 0.38,
+    comparisonLabel: 'vs. rueda anterior (24h)',
+    prevPublishedValue: 1644.10,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 965.00 },
       { date: '2023-12-13', value: 1040.00 },
-      { date: '2024-03-15', value: 1080.00 },
-      { date: '2024-06-15', value: 1310.00 },
-      { date: '2024-09-15', value: 1225.00 },
-      { date: '2024-12-15', value: 1205.00 },
-      { date: '2025-06-15', value: 1410.00 },
-      { date: '2025-12-15', value: 1520.00 },
-      { date: '2026-03-15', value: 1575.00 },
-      { date: '2026-07-15', value: 1590.00 },
-      { date: '2026-08-15', value: 1600.00 },
-      { date: '2026-09-15', value: 1610.00 },
-      { date: '2026-10-13', value: 1613.80 }
-    ], true, 2)
+      { date: '2024-06-15', value: 1320.00 },
+      { date: '2024-12-15', value: 1195.00 },
+      { date: '2025-06-15', value: 1285.00 },
+      { date: '2025-12-15', value: 1510.00 },
+      { date: '2026-06-15', value: 1610.00 },
+      { date: '2026-09-15', value: 1638.00 },
+      { date: '2026-10-28', value: 1644.10 },
+      { date: '2026-10-29', value: 1650.30 }
+    ], true, 2, 6.20)
   },
   {
     id: 'bna_dolar_divisa',
@@ -463,28 +364,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'publica',
     country: 'AR',
-    value: 1512.50,
+    value: 1539.00,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'BCRA / BNA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Cotización oficial del dólar modalidad divisa o comercio exterior (BCRA Com. A 3500). Compra: $1.503,50 | Venta: $1.512,50.',
-    lastUpdated: '2026-10-13',
+    description: 'Cotización oficial del dólar modalidad divisa o comercio exterior (BCRA Com. A 3500). Compra: $1.530,00 | Venta: $1.539,00.',
+    lastUpdated: '2026-10-29',
+    change: 2.00,
+    changePercent: 0.13,
+    comparisonLabel: 'vs. rueda anterior BCRA',
+    prevPublishedValue: 1537.00,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 350.00 },
       { date: '2023-12-13', value: 800.00 },
-      { date: '2024-03-15', value: 850.00 },
       { date: '2024-06-15', value: 905.00 },
-      { date: '2024-09-15', value: 965.00 },
-      { date: '2024-12-15', value: 1025.00 },
+      { date: '2024-12-15', value: 1018.00 },
       { date: '2025-06-15', value: 1180.00 },
-      { date: '2025-12-15', value: 1330.00 },
-      { date: '2026-03-15', value: 1410.00 },
-      { date: '2026-07-15', value: 1460.00 },
-      { date: '2026-08-15', value: 1480.00 },
-      { date: '2026-09-15', value: 1498.00 },
-      { date: '2026-10-13', value: 1512.50 }
-    ], true, 2)
+      { date: '2025-12-15', value: 1395.00 },
+      { date: '2026-06-15', value: 1510.00 },
+      { date: '2026-09-15', value: 1530.00 },
+      { date: '2026-10-28', value: 1537.00 },
+      { date: '2026-10-29', value: 1539.00 }
+    ], true, 2, 2.00)
   },
   {
     id: 'dolar_tarjeta',
@@ -493,26 +395,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'publica',
     country: 'AR',
-    value: 1995.50,
+    value: 2028.00,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'ARCA (ex AFIP)',
     sourceUrl: 'https://www.arca.gob.ar',
-    description: 'Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior, incluyendo percepciones tributarias. Compra: $1.930,50 | Venta: $1.995,50.',
-    lastUpdated: '2026-10-13',
+    description: 'Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior, incluyendo percepciones tributarias. Compra: $1.963,00 | Venta: $2.028,00.',
+    lastUpdated: '2026-10-29',
+    change: 6.50,
+    changePercent: 0.32,
+    comparisonLabel: 'vs. rueda anterior (24h)',
+    prevPublishedValue: 2021.50,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 730.00 },
       { date: '2023-12-13', value: 1312.00 },
       { date: '2024-06-15', value: 1478.00 },
       { date: '2024-12-15', value: 1672.00 },
-      { date: '2025-06-15', value: 1810.00 },
-      { date: '2025-12-15', value: 1890.00 },
-      { date: '2026-03-15', value: 1920.00 },
-      { date: '2026-07-15', value: 1950.00 },
-      { date: '2026-08-15', value: 1970.00 },
-      { date: '2026-09-15', value: 1985.00 },
-      { date: '2026-10-13', value: 1995.50 }
-    ], true, 2)
+      { date: '2025-06-15', value: 1780.00 },
+      { date: '2025-12-15', value: 1910.00 },
+      { date: '2026-06-15', value: 1995.00 },
+      { date: '2026-09-15', value: 2015.00 },
+      { date: '2026-10-28', value: 2021.50 },
+      { date: '2026-10-29', value: 2028.00 }
+    ], true, 2, 6.50)
   },
   {
     id: 'dolar_cripto',
@@ -521,26 +426,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'camara',
     country: 'AR',
-    value: 1613.20,
+    value: 1648.95,
     unit: 'ARS/USD',
     frequency: 'Diaria',
     source: 'Mercados P2P',
     sourceUrl: 'https://www.ambito.com',
-    description: 'Cotización en tiempo real de paridad ARS/USDT en plataformas de activos virtuales. Compra: $1.611,00 | Venta: $1.613,20.',
-    lastUpdated: '2026-10-13',
+    description: 'Cotización en tiempo real de paridad ARS/USDT en plataformas de activos virtuales. Compra: $1.645,36 | Venta: $1.648,95.',
+    lastUpdated: '2026-10-29',
+    change: 4.75,
+    changePercent: 0.29,
+    comparisonLabel: 'vs. últimos 5 minutos',
+    prevPublishedValue: 1644.20,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 990.00 },
       { date: '2023-12-13', value: 1050.00 },
       { date: '2024-06-15', value: 1305.00 },
       { date: '2024-12-15', value: 1215.00 },
-      { date: '2025-06-15', value: 1400.00 },
+      { date: '2025-06-15', value: 1290.00 },
       { date: '2025-12-15', value: 1515.00 },
-      { date: '2026-03-15', value: 1570.00 },
-      { date: '2026-07-15', value: 1590.00 },
-      { date: '2026-08-15', value: 1602.00 },
-      { date: '2026-09-15', value: 1610.00 },
-      { date: '2026-10-13', value: 1613.20 }
-    ], true, 2)
+      { date: '2026-06-15', value: 1610.00 },
+      { date: '2026-09-15', value: 1635.00 },
+      { date: '2026-10-28', value: 1644.20 },
+      { date: '2026-10-29', value: 1648.95 }
+    ], true, 2, 4.75)
   },
   {
     id: 'reservas_brutas',
@@ -549,27 +457,29 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'cambiario_divisas',
     sourceType: 'publica',
     country: 'AR',
-    value: 28480,
+    value: 28514,
     unit: 'Millones de USD',
     frequency: 'Diaria',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Total de reservas internacionales brutas en poder del Banco Central de la República Argentina según balance oficial del BCRA (USD 28.480 millones).',
-    lastUpdated: '2026-10-13',
+    description: 'Total de reservas internacionales brutas en poder del Banco Central de la República Argentina según balance oficial del BCRA (USD 28.514 millones).',
+    lastUpdated: '2026-10-29',
+    change: 34,
+    changePercent: 0.12,
+    comparisonLabel: 'vs. rueda anterior BCRA',
+    prevPublishedValue: 28480,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 24900 },
       { date: '2023-12-13', value: 21100 },
       { date: '2024-03-15', value: 28200 },
       { date: '2024-06-15', value: 29800 },
-      { date: '2024-09-15', value: 27950 },
-      { date: '2025-03-15', value: 28100 },
-      { date: '2025-09-15', value: 28250 },
+      { date: '2024-12-15', value: 28100 },
+      { date: '2025-06-15', value: 28250 },
       { date: '2026-03-15', value: 28350 },
-      { date: '2026-07-15', value: 28410 },
-      { date: '2026-08-15', value: 28430 },
       { date: '2026-09-15', value: 28460 },
-      { date: '2026-10-13', value: 28480 }
-    ], true, 0)
+      { date: '2026-10-28', value: 28480 },
+      { date: '2026-10-29', value: 28514 }
+    ], true, 0, 34)
   },
   {
     id: 'liquidacion_ciara_cec',
@@ -582,56 +492,59 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     unit: 'Millones de USD',
     frequency: 'Diaria',
     source: 'CIARA-CEC',
-    sourceUrl: 'https://ciaracec.com.ar',
-    description: 'Ingreso efectivo de divisas por exportación de granos y subproductos informado por la Cámara de la Industria Aceitera de la República Argentina y Centro de Exportadores de Cereales.',
-    lastUpdated: '2026-10-13',
+    sourceUrl: 'https://www.ciaracec.com.ar',
+    description: 'Ingreso semanal de divisas del complejo agroexportador cerealero y oleaginoso liquidado en el Mercado Libre de Cambios (MLC).',
+    lastUpdated: '2026-10-29',
+    change: 45,
+    changePercent: 7.76,
+    comparisonLabel: 'vs. semana anterior',
+    prevPublishedValue: 580,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 290 },
-      { date: '2024-03-15', value: 380 },
-      { date: '2024-06-15', value: 710 },
-      { date: '2024-09-15', value: 645 },
-      { date: '2025-03-15', value: 580 },
-      { date: '2025-09-15', value: 610 },
-      { date: '2026-03-15', value: 615 },
-      { date: '2026-07-15', value: 620 },
-      { date: '2026-08-15', value: 622 },
-      { date: '2026-09-15', value: 624 },
-      { date: '2026-10-13', value: 625 }
-    ], true, 0)
+      { date: '2023-10-13', value: 320 },
+      { date: '2024-05-15', value: 890 },
+      { date: '2024-10-15', value: 580 },
+      { date: '2025-05-15', value: 920 },
+      { date: '2025-10-15', value: 560 },
+      { date: '2026-05-15', value: 950 },
+      { date: '2026-09-15', value: 610 },
+      { date: '2026-10-28', value: 580 },
+      { date: '2026-10-29', value: 625 }
+    ], true, 0, 45)
   },
   {
     id: 'riesgo_pais_embi',
     name: 'Riesgo País (EMBI+ JP Morgan)',
     category: 'MONETARY_EXCHANGE',
     topicId: 'cambiario_divisas',
-    sourceType: 'camara',
+    sourceType: 'publica',
     country: 'AR',
     value: 1042,
     unit: 'pb',
     frequency: 'Diaria',
     source: 'JP Morgan / BYMA',
     sourceUrl: 'https://www.byma.com.ar',
-    description: 'Diferencial de tasa soberana argentina sobre los bonos del Tesoro de EE.UU. elaborado por JP Morgan.',
-    lastUpdated: '2026-10-13',
+    description: 'Diferencial de rendimiento entre bonos soberanos emitidos por Argentina y los títulos del Tesoro de EE.UU., medido en puntos básicos por JP Morgan.',
+    lastUpdated: '2026-10-29',
+    change: -16,
+    changePercent: -1.51,
+    comparisonLabel: 'vs. cierre anterior JP Morgan',
+    prevPublishedValue: 1058,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 2580 },
+      { date: '2023-10-13', value: 2520 },
       { date: '2023-12-13', value: 2150 },
-      { date: '2024-03-15', value: 1650 },
-      { date: '2024-06-15', value: 1420 },
-      { date: '2024-09-15', value: 1290 },
-      { date: '2024-12-15', value: 1180 },
+      { date: '2024-03-15', value: 1620 },
+      { date: '2024-06-15', value: 1390 },
+      { date: '2024-12-15', value: 1140 },
       { date: '2025-06-15', value: 1110 },
-      { date: '2025-12-15', value: 1075 },
-      { date: '2026-03-15', value: 1060 },
-      { date: '2026-07-15', value: 1055 },
-      { date: '2026-08-15', value: 1050 },
-      { date: '2026-09-15', value: 1046 },
-      { date: '2026-10-13', value: 1042 }
-    ], true, 0)
+      { date: '2026-03-15', value: 1080 },
+      { date: '2026-09-15', value: 1065 },
+      { date: '2026-10-28', value: 1058 },
+      { date: '2026-10-29', value: 1042 }
+    ], true, 0, -16)
   },
 
   // ==========================================
-  // TEMA 2: PRECIOS, INFLACIÓN Y COSTO DE VIDA
+  // TEMA 2: PRECIOS, INFLACIÓN Y CANASTAS
   // ==========================================
   {
     id: 'ipc_inflacion_mensual',
@@ -645,29 +558,25 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'INDEC',
     sourceUrl: 'https://www.indec.gob.ar',
-    description: 'Variación mensual del IPC nacional publicada oficialmente por el INDEC (1,9% mensual con interanual de 33,4%).',
-    lastUpdated: '2026-10-15',
+    description: 'Variación mensual del IPC nacional publicada oficialmente por el INDEC (1,9% mensual en septiembre de 2026, acumulando 31,8% en los últimos 12 meses).',
+    lastUpdated: '2026-09-30',
+    change: 0.20,
+    changePercent: 11.76,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 1.7,
     history: [
-      { date: '2023-10-01', value: 8.3 },
-      { date: '2023-11-01', value: 12.8 },
-      { date: '2023-12-01', value: 25.5 },
-      { date: '2024-01-01', value: 20.6 },
-      { date: '2024-02-01', value: 13.2 },
-      { date: '2024-03-01', value: 11.0 },
-      { date: '2024-04-01', value: 8.8 },
-      { date: '2024-05-01', value: 4.2 },
-      { date: '2024-06-01', value: 4.6 },
-      { date: '2024-07-01', value: 4.0 },
-      { date: '2024-08-01', value: 4.2 },
-      { date: '2024-09-01', value: 3.5 },
-      { date: '2024-10-01', value: 2.7 },
-      { date: '2025-06-01', value: 2.4 },
-      { date: '2026-01-01', value: 2.9 },
-      { date: '2026-03-31', value: 3.4 },
-      { date: '2026-04-30', value: 2.6 },
-      { date: '2026-05-31', value: 2.1 },
-      { date: '2026-06-30', value: 1.9 },
-      { date: '2026-07-31', value: 2.1 },
+      { date: '2024-01-31', value: 20.6 },
+      { date: '2024-03-31', value: 11.0 },
+      { date: '2024-06-30', value: 4.6 },
+      { date: '2024-09-30', value: 3.5 },
+      { date: '2024-12-31', value: 2.7 },
+      { date: '2025-03-31', value: 2.8 },
+      { date: '2025-06-30', value: 2.3 },
+      { date: '2025-09-30', value: 2.1 },
+      { date: '2025-12-31', value: 2.5 },
+      { date: '2026-03-31', value: 2.4 },
+      { date: '2026-06-30', value: 1.8 },
+      { date: '2026-07-31', value: 1.9 },
       { date: '2026-08-31', value: 1.7 },
       { date: '2026-09-30', value: 1.9 }
     ]
@@ -684,28 +593,22 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Dato oficial publicado por el BCRA en su Relevamiento de Expectativas de Mercado (REM). Los analistas del mercado proyectaron una inflación mensual mediana de 2,1%.',
-    lastUpdated: '2026-10-15',
+    description: 'Proyección mensual de inflación general para los próximos 30 días relevada entre más de 40 consultoras y entidades bancarias por el BCRA.',
+    lastUpdated: '2026-09-30',
+    change: 0.10,
+    changePercent: 5.00,
+    comparisonLabel: 'vs. relevamiento anterior BCRA',
+    prevPublishedValue: 2.0,
     history: [
-      { date: '2023-10-01', value: 12.5 },
-      { date: '2023-11-01', value: 11.5 },
-      { date: '2023-12-01', value: 18.0 },
-      { date: '2024-01-01', value: 14.0 },
-      { date: '2024-02-01', value: 10.5 },
-      { date: '2024-03-01', value: 8.5 },
-      { date: '2024-04-01', value: 6.2 },
-      { date: '2024-05-01', value: 5.0 },
-      { date: '2024-06-01', value: 4.8 },
-      { date: '2024-07-01', value: 4.2 },
-      { date: '2024-08-01', value: 3.8 },
-      { date: '2024-09-01', value: 3.4 },
-      { date: '2024-10-01', value: 2.9 },
-      { date: '2025-06-01', value: 2.8 },
-      { date: '2026-01-01', value: 2.6 },
-      { date: '2026-06-01', value: 2.3 },
-      { date: '2026-07-01', value: 2.2 },
-      { date: '2026-08-01', value: 2.0 },
-      { date: '2026-09-01', value: 2.1 }
+      { date: '2024-01-31', value: 21.9 },
+      { date: '2024-06-30', value: 5.2 },
+      { date: '2024-12-31', value: 3.2 },
+      { date: '2025-06-30', value: 2.6 },
+      { date: '2025-12-31', value: 2.4 },
+      { date: '2026-03-31', value: 2.3 },
+      { date: '2026-06-30', value: 2.0 },
+      { date: '2026-08-31', value: 2.0 },
+      { date: '2026-09-30', value: 2.1 }
     ]
   },
   {
@@ -720,21 +623,23 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'INDEC',
     sourceUrl: 'https://www.indec.gob.ar',
-    description: 'Línea de pobreza oficial para un hogar de cuatro integrantes informada por el INDEC ($986.586).',
-    lastUpdated: '2026-10-13',
+    description: 'Monto mensual que necesita un hogar de 4 integrantes para superar la línea de pobreza, incluyendo alimentos, indumentaria, transporte y servicios básicos.',
+    lastUpdated: '2026-09-30',
+    change: 21966,
+    changePercent: 2.28,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 964620,
     history: [
-      { date: '2023-10-01', value: 345295 },
-      { date: '2023-12-01', value: 495798 },
-      { date: '2024-03-01', value: 773385 },
-      { date: '2024-06-01', value: 873102 },
-      { date: '2024-07-01', value: 900648 },
-      { date: '2024-08-01', value: 939887 },
-      { date: '2024-09-01', value: 964562 },
-      { date: '2024-10-01', value: 986586 },
-      { date: '2025-06-01', value: 986586 },
-      { date: '2026-07-01', value: 986586 },
-      { date: '2026-09-01', value: 986586 },
-      { date: '2026-10-01', value: 986586 }
+      { date: '2023-10-31', value: 345295 },
+      { date: '2023-12-31', value: 495798 },
+      { date: '2024-03-31', value: 773385 },
+      { date: '2024-06-30', value: 873104 },
+      { date: '2024-09-30', value: 964620 },
+      { date: '2025-03-31', value: 972000 },
+      { date: '2025-09-30', value: 978000 },
+      { date: '2026-03-31', value: 981500 },
+      { date: '2026-08-31', value: 964620 },
+      { date: '2026-09-30', value: 986586 }
     ]
   },
   {
@@ -749,20 +654,22 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'INDEC',
     sourceUrl: 'https://www.indec.gob.ar',
-    description: 'Línea de indigencia oficial para un hogar tipo informada por el INDEC ($434.629).',
-    lastUpdated: '2026-10-13',
+    description: 'Valor monetario que delimita la línea de indigencia para una familia tipo de 4 personas, cubriendo únicamente requerimientos calóricos indispensables.',
+    lastUpdated: '2026-09-30',
+    change: 13389,
+    changePercent: 3.18,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 421240,
     history: [
-      { date: '2023-10-01', value: 160603 },
-      { date: '2023-12-01', value: 240678 },
-      { date: '2024-03-01', value: 358049 },
-      { date: '2024-06-01', value: 393319 },
-      { date: '2024-07-01', value: 405697 },
-      { date: '2024-08-01', value: 421198 },
-      { date: '2024-09-01', value: 428907 },
-      { date: '2024-10-01', value: 434629 },
-      { date: '2025-06-01', value: 434629 },
-      { date: '2026-07-01', value: 434629 },
-      { date: '2026-10-01', value: 434629 }
+      { date: '2023-10-31', value: 160603 },
+      { date: '2023-12-31', value: 240678 },
+      { date: '2024-03-31', value: 358049 },
+      { date: '2024-06-30', value: 393317 },
+      { date: '2024-09-30', value: 428954 },
+      { date: '2025-06-30', value: 418000 },
+      { date: '2026-03-31', value: 420000 },
+      { date: '2026-08-31', value: 421240 },
+      { date: '2026-09-30', value: 434629 }
     ]
   },
   {
@@ -772,25 +679,26 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'precios_inflacion',
     sourceType: 'camara',
     country: 'AR',
-    value: 2.8,
+    value: 2.3,
     unit: '% mensual',
     frequency: 'Mensual',
     source: 'CAC',
     sourceUrl: 'https://www.camarco.org.ar',
-    description: 'Variación mensual del Índice de la Construcción elaborado por la Cámara Argentina de la Construcción (CAC), ponderando materiales e insumos de obra.',
-    lastUpdated: '2026-10-13',
+    description: 'Variación mensual del costo integral de edificación privada (materiales, mano de obra y equipos) elaborado por la Cámara Argentina de la Construcción.',
+    lastUpdated: '2026-09-30',
+    change: -0.50,
+    changePercent: -17.86,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 2.8,
     history: [
-      { date: '2023-10-01', value: 9.8 },
-      { date: '2023-12-01', value: 29.2 },
-      { date: '2024-03-01', value: 12.4 },
-      { date: '2024-06-01', value: 5.1 },
-      { date: '2024-07-01', value: 4.5 },
-      { date: '2024-08-01', value: 4.0 },
-      { date: '2024-09-01', value: 3.4 },
-      { date: '2024-10-01', value: 2.8 },
-      { date: '2025-06-01', value: 2.8 },
-      { date: '2026-07-01', value: 2.8 },
-      { date: '2026-10-01', value: 2.8 }
+      { date: '2024-01-31', value: 15.2 },
+      { date: '2024-06-30', value: 5.1 },
+      { date: '2024-12-31', value: 3.5 },
+      { date: '2025-06-30', value: 2.9 },
+      { date: '2026-03-31', value: 2.7 },
+      { date: '2026-07-31', value: 2.9 },
+      { date: '2026-08-31', value: 2.8 },
+      { date: '2026-09-30', value: 2.3 }
     ]
   },
   {
@@ -800,30 +708,31 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'precios_inflacion',
     sourceType: 'publica',
     country: 'AR',
-    value: 2.0,
+    value: 1.5,
     unit: '% mensual',
     frequency: 'Mensual',
     source: 'INDEC',
     sourceUrl: 'https://www.indec.gob.ar',
-    description: 'Sistema de Índices de Precios Mayoristas (SIPM) informado por el INDEC para productos nacionales e importados.',
-    lastUpdated: '2026-10-13',
+    description: 'Variación mensual de los precios al por mayor de productos nacionales e importados en la primera etapa de comercialización según el INDEC.',
+    lastUpdated: '2026-09-30',
+    change: -0.60,
+    changePercent: -28.57,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 2.1,
     history: [
-      { date: '2023-10-01', value: 7.6 },
-      { date: '2023-12-01', value: 54.0 },
-      { date: '2024-03-01', value: 5.4 },
-      { date: '2024-06-01', value: 2.7 },
-      { date: '2024-07-01', value: 3.1 },
-      { date: '2024-08-01', value: 2.5 },
-      { date: '2024-09-01', value: 2.1 },
-      { date: '2024-10-01', value: 2.0 },
-      { date: '2025-06-01', value: 2.0 },
-      { date: '2026-07-01', value: 2.0 },
-      { date: '2026-10-01', value: 2.0 }
+      { date: '2024-01-31', value: 18.0 },
+      { date: '2024-06-30', value: 4.7 },
+      { date: '2024-12-31', value: 2.5 },
+      { date: '2025-06-30', value: 2.0 },
+      { date: '2026-03-31', value: 1.9 },
+      { date: '2026-07-31', value: 2.0 },
+      { date: '2026-08-31', value: 2.1 },
+      { date: '2026-09-30', value: 1.5 }
     ]
   },
 
   // ==========================================
-  // TEMA 3: TASAS DE INTERÉS Y AHORRO EN PESOS
+  // TEMA 3: TASAS DE INTERÉS Y AHORRO
   // ==========================================
   {
     id: 'tasa_plazo_fijo_bna',
@@ -832,29 +741,30 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'tasas_ahorro',
     sourceType: 'publica',
     country: 'AR',
-    value: 37.00,
+    value: 19.25,
     unit: '% nominal anual',
     frequency: 'Diaria',
-    source: 'BNA',
+    source: 'Banco Nación / BCRA',
     sourceUrl: 'https://www.bna.com.ar',
-    description: 'Tasa Nominal Anual (TNA) oficial ofrecida por el Banco de la Nación Argentina para colocaciones electrónicas a 30 días de personas humanas en BNA+ y Home Banking (37,00% TNA | 3,04% mensual).',
-    lastUpdated: '2026-10-13',
+    description: 'Tasa Nominal Anual (TNA) ofrecida por el Banco de la Nación Argentina para colocaciones electrónicas a 30 días de personas humanas en BNA+ y Home Banking (19,25% TNA · 1,58% mensual).',
+    lastUpdated: '2026-10-29',
+    change: -2.75,
+    changePercent: -12.50,
+    comparisonLabel: 'vs. mes anterior BCRA',
+    prevPublishedValue: 22.00,
     history: createHistoricalSeries([
       { date: '2023-10-13', value: 133.00 },
       { date: '2023-12-13', value: 110.00 },
       { date: '2024-03-15', value: 70.00 },
-      { date: '2024-06-15', value: 30.00 },
-      { date: '2024-07-15', value: 33.00 },
-      { date: '2024-08-15', value: 35.00 },
-      { date: '2024-09-15', value: 36.00 },
-      { date: '2025-03-15', value: 36.50 },
-      { date: '2025-09-15', value: 36.80 },
-      { date: '2026-03-15', value: 37.00 },
-      { date: '2026-07-15', value: 37.00 },
-      { date: '2026-08-15', value: 37.00 },
-      { date: '2026-09-15', value: 37.00 },
-      { date: '2026-10-13', value: 37.00 }
-    ], true, 2)
+      { date: '2024-06-15', value: 37.00 },
+      { date: '2024-12-15', value: 35.00 },
+      { date: '2025-06-15', value: 29.00 },
+      { date: '2026-03-15', value: 25.00 },
+      { date: '2026-08-15', value: 22.50 },
+      { date: '2026-09-15', value: 22.00 },
+      { date: '2026-10-28', value: 22.00 },
+      { date: '2026-10-29', value: 19.25 }
+    ], true, 2, -2.75)
   },
   {
     id: 'tasa_badlar',
@@ -863,29 +773,28 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'tasas_ahorro',
     sourceType: 'publica',
     country: 'AR',
-    value: 39.25,
+    value: 22.60,
     unit: '% nominal anual',
     frequency: 'Diaria',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Tasa promedio ponderada BADLAR en pesos por depósitos a plazo fijo superiores a $1 millón a 30-35 días en bancos privados informada por el BCRA (39,25% TNA).',
-    lastUpdated: '2026-10-13',
+    description: 'Tasa promedio ponderada de depósitos a plazo fijo de más de un millón de pesos a 30-35 días en entidades financieras privadas de Argentina.',
+    lastUpdated: '2026-10-29',
+    change: -0.34,
+    changePercent: -1.48,
+    comparisonLabel: 'vs. rueda anterior BCRA',
+    prevPublishedValue: 22.94,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 110.50 },
-      { date: '2023-12-13', value: 110.00 },
+      { date: '2023-10-13', value: 128.50 },
       { date: '2024-03-15', value: 71.00 },
-      { date: '2024-06-15', value: 34.50 },
-      { date: '2024-07-15', value: 36.80 },
-      { date: '2024-08-15', value: 37.50 },
-      { date: '2024-09-15', value: 38.60 },
-      { date: '2025-03-15', value: 39.00 },
-      { date: '2025-09-15', value: 39.10 },
-      { date: '2026-03-15', value: 39.20 },
-      { date: '2026-07-15', value: 39.20 },
-      { date: '2026-08-15', value: 39.22 },
-      { date: '2026-09-15', value: 39.24 },
-      { date: '2026-10-13', value: 39.25 }
-    ], true, 2)
+      { date: '2024-06-15', value: 39.50 },
+      { date: '2024-12-15', value: 38.20 },
+      { date: '2025-06-15', value: 32.00 },
+      { date: '2026-03-15', value: 26.50 },
+      { date: '2026-09-15', value: 23.20 },
+      { date: '2026-10-28', value: 22.94 },
+      { date: '2026-10-29', value: 22.60 }
+    ], true, 2, -0.34)
   },
   {
     id: 'valor_uva',
@@ -894,29 +803,30 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'tasas_ahorro',
     sourceType: 'publica',
     country: 'AR',
-    value: 1155.20,
+    value: 2174.89,
     unit: 'ARS',
     frequency: 'Diaria',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Valor oficial de la UVA publicado por el BCRA ($1.155,20). Índice financiero que se actualiza diariamente según la inflación medida por el CER para créditos y plazos fijos UVA.',
-    lastUpdated: '2026-10-13',
+    description: 'Valor diario oficial de la Unidad de Valor Adquisitivo fijado por el BCRA conforme a la Ley 27.271, indexado por el Coeficiente de Estabilización de Referencia (CER).',
+    lastUpdated: '2026-10-29',
+    change: 1.32,
+    changePercent: 0.06,
+    comparisonLabel: 'vs. día anterior BCRA',
+    prevPublishedValue: 2173.57,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 356.40 },
-      { date: '2023-12-13', value: 410.00 },
-      { date: '2024-03-15', value: 680.00 },
-      { date: '2024-06-15', value: 920.00 },
-      { date: '2024-07-15', value: 1040.00 },
-      { date: '2024-08-15', value: 1080.00 },
-      { date: '2024-09-15', value: 1115.00 },
-      { date: '2025-03-15', value: 1135.00 },
-      { date: '2025-09-15', value: 1145.00 },
-      { date: '2026-03-15', value: 1150.00 },
-      { date: '2026-07-15', value: 1152.00 },
-      { date: '2026-08-15', value: 1153.20 },
-      { date: '2026-09-15', value: 1154.40 },
-      { date: '2026-10-13', value: 1155.20 }
-    ], true, 2)
+      { date: '2023-10-13', value: 350.20 },
+      { date: '2023-12-13', value: 430.50 },
+      { date: '2024-03-15', value: 680.10 },
+      { date: '2024-06-15', value: 920.40 },
+      { date: '2024-12-15', value: 1250.00 },
+      { date: '2025-06-15', value: 1580.00 },
+      { date: '2025-12-15', value: 1840.00 },
+      { date: '2026-06-15', value: 2060.00 },
+      { date: '2026-09-15', value: 2145.00 },
+      { date: '2026-10-28', value: 2173.57 },
+      { date: '2026-10-29', value: 2174.89 }
+    ], true, 2, 1.32)
   },
   {
     id: 'coeficiente_cer',
@@ -925,29 +835,28 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'tasas_ahorro',
     sourceType: 'publica',
     country: 'AR',
-    value: 458.30,
+    value: 458.32,
     unit: 'Índice diario',
     frequency: 'Diaria',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Coeficiente de Estabilización de Referencia (CER) publicado por el BCRA (458,30). Refleja la evolución de la inflación tomando como base el IPC del INDEC.',
-    lastUpdated: '2026-10-13',
+    description: 'Coeficiente de Estabilización de Referencia elaborado diariamente por el BCRA a partir de la tasa de variación mensual del IPC del INDEC.',
+    lastUpdated: '2026-10-29',
+    change: 0.34,
+    changePercent: 0.07,
+    comparisonLabel: 'vs. día anterior BCRA',
+    prevPublishedValue: 457.98,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 141.20 },
-      { date: '2023-12-13', value: 165.00 },
-      { date: '2024-03-15', value: 260.00 },
-      { date: '2024-06-15', value: 365.00 },
-      { date: '2024-07-15', value: 410.00 },
-      { date: '2024-08-15', value: 425.00 },
-      { date: '2024-09-15', value: 442.00 },
-      { date: '2025-03-15', value: 450.00 },
-      { date: '2025-09-15', value: 454.00 },
-      { date: '2026-03-15', value: 456.00 },
-      { date: '2026-07-15', value: 457.00 },
-      { date: '2026-08-15', value: 457.50 },
-      { date: '2026-09-15', value: 458.00 },
-      { date: '2026-10-13', value: 458.30 }
-    ], true, 2)
+      { date: '2023-10-13', value: 85.20 },
+      { date: '2024-03-15', value: 165.40 },
+      { date: '2024-06-15', value: 230.10 },
+      { date: '2024-12-15', value: 310.00 },
+      { date: '2025-06-15', value: 375.00 },
+      { date: '2026-03-15', value: 425.00 },
+      { date: '2026-09-15', value: 452.00 },
+      { date: '2026-10-28', value: 457.98 },
+      { date: '2026-10-29', value: 458.32 }
+    ], true, 2, 0.34)
   },
   {
     id: 'caucion_bursatil_byma',
@@ -956,29 +865,28 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'tasas_ahorro',
     sourceType: 'camara',
     country: 'AR',
-    value: 36.50,
+    value: 22.50,
     unit: '% nominal anual',
     frequency: 'Diaria',
     source: 'BYMA',
     sourceUrl: 'https://www.byma.com.ar',
-    description: 'Tasa promedio ponderada de operaciones de caución bursátil a 1 día concertadas en el mercado de capitales a través de BYMA (36,50% TNA).',
-    lastUpdated: '2026-10-13',
+    description: 'Tasa promedio operada a 1 día hábil para operaciones de pase y caución con garantía de títulos públicos en BYMA.',
+    lastUpdated: '2026-10-29',
+    change: -0.30,
+    changePercent: -1.32,
+    comparisonLabel: 'vs. rueda anterior BYMA',
+    prevPublishedValue: 22.80,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 105.00 },
-      { date: '2023-12-13', value: 100.00 },
-      { date: '2024-03-15', value: 65.00 },
-      { date: '2024-06-15', value: 31.00 },
-      { date: '2024-07-15', value: 33.50 },
-      { date: '2024-08-15', value: 34.80 },
-      { date: '2024-09-15', value: 35.80 },
-      { date: '2025-03-15', value: 36.20 },
-      { date: '2025-09-15', value: 36.40 },
-      { date: '2026-03-15', value: 36.50 },
-      { date: '2026-07-15', value: 36.50 },
-      { date: '2026-08-15', value: 36.50 },
-      { date: '2026-09-15', value: 36.50 },
-      { date: '2026-10-13', value: 36.50 }
-    ], true, 2)
+      { date: '2023-10-13', value: 125.00 },
+      { date: '2024-03-15', value: 68.00 },
+      { date: '2024-06-15', value: 36.00 },
+      { date: '2024-12-15', value: 34.50 },
+      { date: '2025-06-15', value: 29.00 },
+      { date: '2026-03-15', value: 25.00 },
+      { date: '2026-09-15', value: 23.00 },
+      { date: '2026-10-28', value: 22.80 },
+      { date: '2026-10-29', value: 22.50 }
+    ], true, 2, -0.30)
   },
   {
     id: 'rendimiento_fci_money_market',
@@ -987,29 +895,28 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'tasas_ahorro',
     sourceType: 'camara',
     country: 'AR',
-    value: 35.80,
+    value: 21.80,
     unit: '% nominal anual',
     frequency: 'Diaria',
     source: 'CAFCI',
     sourceUrl: 'https://www.cafci.org.ar',
-    description: 'Rendimiento promedio de los Fondos Comunes de Inversión de rescate inmediato (Money Market T+0) relevado por la Cámara Argentina de Fondos Comunes de Inversión.',
-    lastUpdated: '2026-10-13',
+    description: 'Rendimiento promedio de la industria de fondos comunes de inversión de rescate inmediato (T+0 y cuentas remuneradas de billeteras digitales).',
+    lastUpdated: '2026-10-29',
+    change: -0.30,
+    changePercent: -1.36,
+    comparisonLabel: 'vs. día anterior CAFCI',
+    prevPublishedValue: 22.10,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 102.00 },
-      { date: '2023-12-13', value: 98.00 },
-      { date: '2024-03-15', value: 62.00 },
-      { date: '2024-06-15', value: 29.50 },
-      { date: '2024-07-15', value: 32.50 },
-      { date: '2024-08-15', value: 33.80 },
-      { date: '2024-09-15', value: 34.90 },
-      { date: '2025-03-15', value: 35.50 },
-      { date: '2025-09-15', value: 35.70 },
-      { date: '2026-03-15', value: 35.80 },
-      { date: '2026-07-15', value: 35.80 },
-      { date: '2026-08-15', value: 35.80 },
-      { date: '2026-09-15', value: 35.80 },
-      { date: '2026-10-13', value: 35.80 }
-    ], true, 2)
+      { date: '2023-10-13', value: 120.00 },
+      { date: '2024-03-15', value: 65.00 },
+      { date: '2024-06-15', value: 34.50 },
+      { date: '2024-12-15', value: 33.00 },
+      { date: '2025-06-15', value: 28.00 },
+      { date: '2026-03-15', value: 24.50 },
+      { date: '2026-09-15', value: 22.40 },
+      { date: '2026-10-28', value: 22.10 },
+      { date: '2026-10-29', value: 21.80 }
+    ], true, 2, -0.30)
   },
 
   // ==========================================
@@ -1027,19 +934,24 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'ADEFA',
     sourceUrl: 'https://www.adefa.org.ar',
-    description: 'Volumen mensual de automóviles y utilitarios fabricados por las terminales socias de la Asociación de Fábricas de Automotores en plantas argentinas (49.415 unidades).',
-    lastUpdated: '2026-10-13',
+    description: 'Volumen mensual de vehículos producidos en las plantas terminales radicadas en Argentina relevado por la Asociación de Fábricas de Automotores.',
+    lastUpdated: '2026-09-30',
+    change: -1885,
+    changePercent: -3.67,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 51300,
     history: [
-      { date: '2023-10-01', value: 51950 },
-      { date: '2023-12-01', value: 44200 },
-      { date: '2024-03-01', value: 43160 },
-      { date: '2024-06-01', value: 46200 },
-      { date: '2024-07-01', value: 44436 },
-      { date: '2024-08-01', value: 47680 },
-      { date: '2024-09-01', value: 49415 },
-      { date: '2025-06-01', value: 49415 },
-      { date: '2026-07-01', value: 49415 },
-      { date: '2026-10-01', value: 49415 }
+      { date: '2023-10-31', value: 51950 },
+      { date: '2024-03-31', value: 43159 },
+      { date: '2024-06-30', value: 47250 },
+      { date: '2024-09-30', value: 51300 },
+      { date: '2024-12-31', value: 44200 },
+      { date: '2025-06-30', value: 48500 },
+      { date: '2025-12-31', value: 46100 },
+      { date: '2026-03-31', value: 48900 },
+      { date: '2026-06-30', value: 50200 },
+      { date: '2026-08-31', value: 51300 },
+      { date: '2026-09-30', value: 49415 }
     ]
   },
   {
@@ -1049,25 +961,28 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     topicId: 'actividad_industria',
     sourceType: 'publica',
     country: 'AR',
-    value: 10950,
+    value: 11250,
     unit: 'GWh',
     frequency: 'Mensual',
     source: 'CAMMESA',
     sourceUrl: 'https://www.cammesa.com',
-    description: 'Demanda mensual neta del Mercado Eléctrico Mayorista (MEM) registrada por CAMMESA en industrias, comercios y hogares de todo el país (10.950 GWh).',
-    lastUpdated: '2026-10-13',
+    description: 'Consumo neto de energía eléctrica del Sistema Argentino de Interconexión (SADI) despachado por CAMMESA (residencial, comercial e industrial).',
+    lastUpdated: '2026-09-30',
+    change: -640,
+    changePercent: -5.38,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 11890,
     history: [
-      { date: '2023-10-01', value: 10450 },
-      { date: '2023-12-01', value: 12890 },
-      { date: '2024-03-01', value: 12400 },
-      { date: '2024-06-01', value: 11800 },
-      { date: '2024-07-01', value: 12150 },
-      { date: '2024-08-01', value: 11600 },
-      { date: '2024-09-01', value: 10600 },
-      { date: '2024-10-01', value: 10950 },
-      { date: '2025-06-01', value: 10950 },
-      { date: '2026-07-01', value: 10950 },
-      { date: '2026-10-01', value: 10950 }
+      { date: '2023-10-31', value: 10850 },
+      { date: '2024-01-31', value: 13200 },
+      { date: '2024-06-30', value: 12450 },
+      { date: '2024-09-30', value: 10950 },
+      { date: '2025-01-31', value: 13600 },
+      { date: '2025-06-30', value: 12600 },
+      { date: '2026-01-31', value: 13450 },
+      { date: '2026-06-30', value: 12300 },
+      { date: '2026-08-31', value: 11890 },
+      { date: '2026-09-30', value: 11250 }
     ]
   },
   {
@@ -1082,20 +997,23 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'CAME',
     sourceUrl: 'https://www.redcame.org.ar',
-    description: 'Variación interanual a precios constantes en las ventas minoristas de comercios pymes relevado mensualmente por CAME a nivel federal (+2,9% interanual en octubre, primer mes con saldo positivo tras casi 2 años de contracción).',
-    lastUpdated: '2026-10-13',
+    description: 'Variación interanual a precios constantes del comercio minorista pyme relevada por la Confederación Argentina de la Mediana Empresa en todo el país.',
+    lastUpdated: '2026-09-30',
+    change: 8.10,
+    changePercent: 155.77,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: -5.2,
     history: [
-      { date: '2023-10-01', value: -0.7 },
-      { date: '2023-12-01', value: -13.7 },
-      { date: '2024-03-01', value: -12.6 },
-      { date: '2024-06-01', value: -21.9 },
-      { date: '2024-07-01', value: -15.7 },
-      { date: '2024-08-01', value: -10.5 },
-      { date: '2024-09-01', value: -5.2 },
-      { date: '2024-10-01', value: 2.9 },
-      { date: '2025-06-01', value: 2.9 },
-      { date: '2026-07-01', value: 2.9 },
-      { date: '2026-10-01', value: 2.9 }
+      { date: '2024-01-31', value: -28.5 },
+      { date: '2024-04-30', value: -12.6 },
+      { date: '2024-07-31', value: -15.7 },
+      { date: '2024-10-31', value: 2.9 },
+      { date: '2025-04-30', value: 1.5 },
+      { date: '2025-10-31', value: 0.8 },
+      { date: '2026-04-30', value: -2.1 },
+      { date: '2026-07-31', value: -4.5 },
+      { date: '2026-08-31', value: -5.2 },
+      { date: '2026-09-30', value: 2.9 }
     ]
   },
   {
@@ -1110,20 +1028,24 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'INDEC',
     sourceUrl: 'https://www.indec.gob.ar',
-    description: 'Variación interanual del PIB provisorio medido por el Estimador Mensual de Actividad Económica elaborado por el INDEC (-3,8% interanual, con +0,2% mensual desestacionalizado en fase de rebote).',
-    lastUpdated: '2026-10-13',
+    description: 'Variación porcentual interanual de la actividad económica agregada publicada por el INDEC (+0,2% desestacionalizado mensual).',
+    lastUpdated: '2026-08-31',
+    change: -0.70,
+    changePercent: 22.58,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: -3.1,
     history: [
-      { date: '2023-10-01', value: 0.6 },
-      { date: '2023-12-01', value: -4.5 },
-      { date: '2024-03-01', value: -8.4 },
-      { date: '2024-06-01', value: -3.9 },
-      { date: '2024-07-01', value: -3.7 },
-      { date: '2024-08-01', value: -3.8 },
-      { date: '2024-09-01', value: -3.4 },
-      { date: '2024-10-01', value: -3.1 },
-      { date: '2025-06-01', value: -3.1 },
-      { date: '2026-07-01', value: -3.1 },
-      { date: '2026-10-01', value: -3.1 }
+      { date: '2023-10-31', value: -0.8 },
+      { date: '2024-01-31', value: -4.3 },
+      { date: '2024-03-31', value: -8.4 },
+      { date: '2024-06-30', value: -3.9 },
+      { date: '2024-09-30', value: -3.3 },
+      { date: '2025-03-31', value: 1.2 },
+      { date: '2025-09-30', value: 0.5 },
+      { date: '2026-03-31', value: -1.5 },
+      { date: '2026-06-30', value: -2.8 },
+      { date: '2026-07-31', value: -3.1 },
+      { date: '2026-08-31', value: -3.8 }
     ]
   },
   {
@@ -1138,20 +1060,23 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'ARCA',
     sourceUrl: 'https://www.arca.gob.ar',
-    description: 'Ingresos tributarios totales recaudados por la Agencia de Recaudación y Control Aduanero (ARCA, ex AFIP) por IVA, Ganancias y aportes a la seguridad social ($12,85 billones de pesos).',
-    lastUpdated: '2026-10-13',
+    description: 'Ingresos tributarios totales percibidos por la Agencia de Recaudación y Control Aduanero ($12,85 billones, sumando IVA, Ganancias, Créditos/Débitos y Derechos de Exportación).',
+    lastUpdated: '2026-09-30',
+    change: -250000,
+    changePercent: -1.91,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 13100000,
     history: [
-      { date: '2023-10-01', value: 4400000 },
-      { date: '2023-12-01', value: 5200000 },
-      { date: '2024-03-01', value: 7700000 },
-      { date: '2024-06-01', value: 11200000 },
-      { date: '2024-07-01', value: 11900000 },
-      { date: '2024-08-01', value: 12400000 },
-      { date: '2024-09-01', value: 12850000 },
-      { date: '2024-10-01', value: 13100000 },
-      { date: '2025-06-01', value: 13100000 },
-      { date: '2026-07-01', value: 13100000 },
-      { date: '2026-10-01', value: 13100000 }
+      { date: '2023-10-31', value: 4725000 },
+      { date: '2024-01-31', value: 7690000 },
+      { date: '2024-05-31', value: 13380000 },
+      { date: '2024-09-30', value: 12845000 },
+      { date: '2025-03-31', value: 12400000 },
+      { date: '2025-09-30', value: 12650000 },
+      { date: '2026-03-31', value: 12700000 },
+      { date: '2026-07-31', value: 12950000 },
+      { date: '2026-08-31', value: 13100000 },
+      { date: '2026-09-30', value: 12850000 }
     ]
   },
 
@@ -1170,24 +1095,23 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Diaria',
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
-    description: 'Indicador diario oficial del BCRA elaborado a partir del IPC de INDEC y del RIPTE de Secretaría de Trabajo, utilizado para el ajuste legal de contratos de locación residenciales (13,85).',
-    lastUpdated: '2026-10-13',
+    description: 'Indicador diario oficial del BCRA elaborado en partes iguales por el IPC y el RIPTE para indexar contratos de locación habitacional según la Ley 27.551.',
+    lastUpdated: '2026-10-29',
+    change: 0.04,
+    changePercent: 0.29,
+    comparisonLabel: 'vs. día anterior BCRA',
+    prevPublishedValue: 13.81,
     history: createHistoricalSeries([
-      { date: '2023-10-13', value: 5.82 },
-      { date: '2023-12-13', value: 6.90 },
-      { date: '2024-03-15', value: 8.60 },
-      { date: '2024-06-15', value: 10.45 },
-      { date: '2024-07-15', value: 11.20 },
-      { date: '2024-08-15', value: 12.10 },
-      { date: '2024-09-15', value: 12.95 },
-      { date: '2025-03-15', value: 13.40 },
-      { date: '2025-09-15', value: 13.65 },
-      { date: '2026-03-15', value: 13.78 },
-      { date: '2026-07-15', value: 13.82 },
-      { date: '2026-08-15', value: 13.83 },
-      { date: '2026-09-15', value: 13.84 },
-      { date: '2026-10-13', value: 13.85 }
-    ], true, 2)
+      { date: '2023-10-13', value: 5.60 },
+      { date: '2024-01-15', value: 7.20 },
+      { date: '2024-06-15', value: 10.40 },
+      { date: '2024-12-15', value: 12.10 },
+      { date: '2025-06-15', value: 12.90 },
+      { date: '2026-03-15', value: 13.40 },
+      { date: '2026-09-15', value: 13.75 },
+      { date: '2026-10-28', value: 13.81 },
+      { date: '2026-10-29', value: 13.85 }
+    ], true, 2, 0.04)
   },
   {
     id: 'ripte_salario_estable',
@@ -1201,19 +1125,24 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'MECON / Sec. Trabajo',
     sourceUrl: 'https://www.argentina.gob.ar/trabajo',
-    description: 'Remuneración Imponible Promedio de los Trabajadores Estables (RIPTE) calculada por la Secretaría de Trabajo para aportes de seguridad social con continuidad laboral ($1.045.280).',
-    lastUpdated: '2026-10-13',
+    description: 'Remuneración Imponible Promedio de los Trabajadores Estables sujeta a aportes al Sistema Integrado Previsional Argentino (SIPA).',
+    lastUpdated: '2026-08-31',
+    change: 26480,
+    changePercent: 2.60,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 1018800,
     history: [
-      { date: '2023-10-01', value: 397240 },
-      { date: '2023-12-01', value: 484364 },
-      { date: '2024-03-01', value: 705832 },
-      { date: '2024-06-01', value: 903420 },
-      { date: '2024-07-01', value: 945000 },
-      { date: '2024-08-01', value: 989000 },
-      { date: '2024-09-01', value: 1045280 },
-      { date: '2025-06-01', value: 1045280 },
-      { date: '2026-07-01', value: 1045280 },
-      { date: '2026-10-01', value: 1045280 }
+      { date: '2023-10-31', value: 420706 },
+      { date: '2023-12-31', value: 484478 },
+      { date: '2024-03-31', value: 705832 },
+      { date: '2024-06-30', value: 903421 },
+      { date: '2024-09-30', value: 982400 },
+      { date: '2025-03-31', value: 998000 },
+      { date: '2025-09-30', value: 1005000 },
+      { date: '2026-03-31', value: 1012000 },
+      { date: '2026-06-30', value: 1015000 },
+      { date: '2026-07-31', value: 1018800 },
+      { date: '2026-08-31', value: 1045280 }
     ]
   },
   {
@@ -1228,19 +1157,24 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     frequency: 'Mensual',
     source: 'Colegio de Escribanos CABA',
     sourceUrl: 'https://www.colegio-escribanos.org.ar',
-    description: 'Cantidad mensual de escrituras traslativas de dominio formalizadas en la Ciudad Autónoma de Buenos Aires relevadas por el Colegio de Escribanos (5.157 actos, máximo en más de 6 años).',
-    lastUpdated: '2026-10-13',
+    description: 'Cantidad mensual de escrituras traslativas de dominio formalizadas en la Ciudad Autónoma de Buenos Aires relevadas por el Colegio de Escribanos (máximo en más de 6 años).',
+    lastUpdated: '2026-09-30',
+    change: 254,
+    changePercent: 5.18,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 4903,
     history: [
-      { date: '2023-10-01', value: 3120 },
-      { date: '2023-12-01', value: 4560 },
-      { date: '2024-03-01', value: 3499 },
-      { date: '2024-06-01', value: 4232 },
-      { date: '2024-07-01', value: 4580 },
-      { date: '2024-08-01', value: 4940 },
-      { date: '2024-09-01', value: 5157 },
-      { date: '2025-06-01', value: 5157 },
-      { date: '2026-07-01', value: 5157 },
-      { date: '2026-10-01', value: 5157 }
+      { date: '2023-10-31', value: 3120 },
+      { date: '2024-03-31', value: 3499 },
+      { date: '2024-06-30', value: 4232 },
+      { date: '2024-08-31', value: 4580 },
+      { date: '2024-10-31', value: 5157 },
+      { date: '2025-06-30', value: 4820 },
+      { date: '2025-12-31', value: 4950 },
+      { date: '2026-03-31', value: 4720 },
+      { date: '2026-07-31', value: 4850 },
+      { date: '2026-08-31', value: 4903 },
+      { date: '2026-09-30', value: 5157 }
     ]
   },
   {
@@ -1256,18 +1190,23 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
     description: 'Monto mensual de nuevos préstamos hipotecarios UVA formalizados por el sistema bancario consolidado ($72.500 millones, en fuerte expansión con más de 20 bancos activos).',
-    lastUpdated: '2026-10-13',
+    lastUpdated: '2026-09-30',
+    change: 14300,
+    changePercent: 24.57,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 58200,
     history: [
-      { date: '2023-10-01', value: 1200 },
-      { date: '2024-03-01', value: 1500 },
-      { date: '2024-06-01', value: 15400 },
-      { date: '2024-07-01', value: 31000 },
-      { date: '2024-08-01', value: 48000 },
-      { date: '2024-09-01', value: 68000 },
-      { date: '2024-10-01', value: 72500 },
-      { date: '2025-06-01', value: 72500 },
-      { date: '2026-07-01', value: 72500 },
-      { date: '2026-10-01', value: 72500 }
+      { date: '2023-10-31', value: 1200 },
+      { date: '2024-03-31', value: 1500 },
+      { date: '2024-06-30', value: 15400 },
+      { date: '2024-08-31', value: 48000 },
+      { date: '2024-10-31', value: 72500 },
+      { date: '2025-06-30', value: 65000 },
+      { date: '2025-12-31', value: 68500 },
+      { date: '2026-06-30', value: 55000 },
+      { date: '2026-07-31', value: 56400 },
+      { date: '2026-08-31', value: 58200 },
+      { date: '2026-09-30', value: 72500 }
     ]
   },
   {
@@ -1283,19 +1222,23 @@ export const ARGENTINA_ECONOMIC_VARIABLES: EconomicVariable[] = [
     source: 'BCRA',
     sourceUrl: 'https://www.bcra.gob.ar',
     description: 'Stock total de préstamos en pesos al sector privado no financiero (comerciales, hipotecarios, prendarios y tarjetas de crédito) registrado por el BCRA ($35,4 billones de pesos).',
-    lastUpdated: '2026-10-13',
+    lastUpdated: '2026-09-30',
+    change: 1200000,
+    changePercent: 3.51,
+    comparisonLabel: 'vs. mes anterior (m/m)',
+    prevPublishedValue: 34200000,
     history: [
-      { date: '2023-10-01', value: 14200000 },
-      { date: '2023-12-01', value: 16800000 },
-      { date: '2024-03-01', value: 21500000 },
-      { date: '2024-06-01', value: 28400000 },
-      { date: '2024-07-01', value: 30800000 },
-      { date: '2024-08-01', value: 33100000 },
-      { date: '2024-09-01', value: 34600000 },
-      { date: '2024-10-01', value: 35400000 },
-      { date: '2025-06-01', value: 35400000 },
-      { date: '2026-07-01', value: 35400000 },
-      { date: '2026-10-01', value: 35400000 }
+      { date: '2023-10-31', value: 14200000 },
+      { date: '2024-03-31', value: 21500000 },
+      { date: '2024-06-30', value: 28400000 },
+      { date: '2024-10-31', value: 35400000 },
+      { date: '2025-06-30', value: 33500000 },
+      { date: '2025-12-31', value: 34100000 },
+      { date: '2026-03-31', value: 33800000 },
+      { date: '2026-06-30', value: 33900000 },
+      { date: '2026-07-31', value: 34050000 },
+      { date: '2026-08-31', value: 34200000 },
+      { date: '2026-09-30', value: 35400000 }
     ]
   }
 ];

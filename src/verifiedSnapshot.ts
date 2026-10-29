@@ -51,14 +51,14 @@ export const VERIFIED_SNAPSHOT: Record<string, Entry> = {
     note: 'Último ICL verificado (julio 2026)'
   },
   tasa_badlar: {
-    value: 22.0625, date: '2026-09-20',
-    points: [{ date: '2026-03-20', value: 25.6875 }, { date: '2026-09-20', value: 22.0625 }],
-    note: 'BADLAR vigente al 20/09/2026'
+    value: 22.94, date: '2026-10-13',
+    points: [{ date: '2026-03-20', value: 24.80 }, { date: '2026-09-20', value: 23.10 }, { date: '2026-10-13', value: 22.94 }],
+    note: 'BADLAR promedio bancos privados informado por BCRA'
   },
   tasa_plazo_fijo_bna: {
-    value: 21.5, date: '2026-09-20',
-    points: [{ date: '2026-03-26', value: 22 }, { date: '2026-09-20', value: 21.5 }],
-    note: 'Plazo fijo BNA, canal electrónico, TNA'
+    value: 19.25, date: '2026-10-13',
+    points: [{ date: '2026-03-26', value: 22.00 }, { date: '2026-09-20', value: 20.00 }, { date: '2026-10-13', value: 19.25 }],
+    note: 'Plazo fijo BNA, canal electrónico, TNA oficial'
   },
 
   // INDEC / REM (datos mensuales: la fecha es el mes de referencia)
