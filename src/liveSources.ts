@@ -38,24 +38,28 @@ const daysBetween = (a: string, b: string) =>
 
 /* ----------------------------- BCRA ----------------------------- */
 
-interface BcraRule { id: string; all: string[]; none?: string[]; tol: number | null }
+interface BcraRule { id: string; preferredId?: number; all: string[]; none?: string[]; tol: number | null }
 
-// Se identifican por descripción (los IDs numéricos del BCRA cambiaron entre versiones de la API).
+// Catálogo e identificación de variables del BCRA según https://www.bcra.gob.ar/apis-banco-central/
 export const BCRA_RULES: BcraRule[] = [
-  { id: 'reservas_brutas', all: ['reservas internacionales'], tol: null },
-  { id: 'tasa_badlar', all: ['badlar', 'privados', 'n.a'], none: ['dolares'], tol: null },
-  { id: 'valor_uva', all: ['unidad de valor adquisitivo'], none: ['vivienda'], tol: null },
-  { id: 'coeficiente_cer', all: ['coeficiente de estabilizacion de referencia'], tol: null },
-  { id: 'indice_icl', all: ['contratos de locacion'], tol: null },
+  { id: 'reservas_brutas', preferredId: 1, all: ['reservas internacionales'], tol: null },
+  { id: 'bna_dolar_divisa', preferredId: 5, all: ['tipo de cambio mayorista', 'referencia'], tol: null },
+  { id: 'tasa_badlar', preferredId: 7, all: ['badlar', 'privados'], none: ['dolares'], tol: null },
+  { id: 'valor_uva', preferredId: 31, all: ['unidad de valor adquisitivo'], none: ['vivienda'], tol: null },
+  { id: 'coeficiente_cer', preferredId: 30, all: ['coeficiente de estabilizacion de referencia'], tol: null },
+  { id: 'indice_icl', preferredId: 40, all: ['contratos de locacion'], tol: null },
 ];
 
 export function matchBcra(results: any[]): LiveValue[] {
   const out: LiveValue[] = [];
   for (const rule of BCRA_RULES) {
-    const hit = results.find(r => {
-      const d = normalize(String(r?.descripcion ?? ''));
-      return rule.all.every(k => d.includes(k)) && !(rule.none ?? []).some(k => d.includes(k));
-    });
+    let hit = rule.preferredId ? results.find(r => Number(r?.idVariable) === rule.preferredId) : undefined;
+    if (!hit) {
+      hit = results.find(r => {
+        const d = normalize(String(r?.descripcion ?? ''));
+        return rule.all.every(k => d.includes(k)) && !(rule.none ?? []).some(k => d.includes(k));
+      });
+    }
     if (!hit) continue;
     const value = Number(hit.ultValorInformado);
     const date = hit.ultFechaInformada;

@@ -76,7 +76,7 @@ export function getMetaIconConfig(variableId: string, topicId?: TopicId | string
         color: 'text-indigo-700',
         bgColor: 'bg-indigo-50/90',
         borderColor: 'border-indigo-200/80',
-        label: 'Mercado Libre'
+        label: 'Informal'
       };
 
     case 'dolar_mep_byma':

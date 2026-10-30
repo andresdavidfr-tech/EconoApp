@@ -268,11 +268,315 @@ async function syncExternalPlazoFijoRates() {
   }
 }
 
+/**
+ * ==============================================================================
+ * INTEGRACIÓN CON APIS OFICIALES DEL BANCO CENTRAL (BCRA) v4.0
+ * Documentación oficial: https://www.bcra.gob.ar/apis-banco-central/
+ * Base: https://api.bcra.gob.ar/estadisticas/v4.0/
+ * ==============================================================================
+ */
+interface BcraCatalogItem {
+  idVariable: number;
+  descripcion: string;
+  categoria: string;
+  ultFechaInformada: string;
+  ultValorInformado: number;
+}
+
+interface BcraSeriesDetail {
+  fecha: string;
+  valor: number;
+}
+
+// In-memory cache para no saturar los límites de la API del BCRA y garantizar latencia ultrabaja
+let bcraCatalogCache: { data: BcraCatalogItem[]; timestamp: number } | null = null;
+const bcraSeriesCache = new Map<number, { data: BcraSeriesDetail[]; timestamp: number }>();
+const BCRA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos de retención
+
+async function fetchBcraOfficialCatalog(): Promise<BcraCatalogItem[]> {
+  const now = Date.now();
+  if (bcraCatalogCache && now - bcraCatalogCache.timestamp < BCRA_CACHE_TTL_MS) {
+    return bcraCatalogCache.data;
+  }
+  const res = await fetch("https://api.bcra.gob.ar/estadisticas/v4.0/monetarias", {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; EconoApp/1.0; +https://www.bcra.gob.ar)",
+      "Accept": "application/json"
+    },
+    signal: AbortSignal.timeout(9000)
+  });
+  if (!res.ok) throw new Error(`BCRA API error HTTP ${res.status}`);
+  const json = await res.json();
+  const results: BcraCatalogItem[] = Array.isArray(json?.results) ? json.results : [];
+  bcraCatalogCache = { data: results, timestamp: now };
+  return results;
+}
+
+async function fetchBcraOfficialSeries(idVariable: number): Promise<BcraSeriesDetail[]> {
+  const now = Date.now();
+  const cached = bcraSeriesCache.get(idVariable);
+  if (cached && now - cached.timestamp < BCRA_CACHE_TTL_MS) {
+    return cached.data;
+  }
+  const res = await fetch(`https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/${idVariable}`, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; EconoApp/1.0; +https://www.bcra.gob.ar)",
+      "Accept": "application/json"
+    },
+    signal: AbortSignal.timeout(9000)
+  });
+  if (!res.ok) throw new Error(`BCRA series error id ${idVariable}: HTTP ${res.status}`);
+  const json = await res.json();
+  const detalle: BcraSeriesDetail[] = json?.results?.[0]?.detalle || [];
+  bcraSeriesCache.set(idVariable, { data: detalle, timestamp: now });
+  return detalle;
+}
+
+/**
+ * Mapeo e hidratación de variables del monitor con la API oficial del BCRA
+ */
+async function syncBCRAOfficialVariables() {
+  try {
+    const catalog = await fetchBcraOfficialCatalog();
+    if (!Array.isArray(catalog) || catalog.length === 0) return;
+
+    const findItem = (id: number) => catalog.find(x => x.idVariable === id);
+
+    // 1. Reservas Internacionales (idVariable: 1)
+    const itemReservas = findItem(1);
+    if (itemReservas) {
+      const v = variablesStore.find(x => x.id === 'reservas_brutas');
+      if (v) {
+        let prevVal = v.prevPublishedValue || 50579;
+        let change = Number((itemReservas.ultValorInformado - prevVal).toFixed(2));
+        try {
+          const series = await fetchBcraOfficialSeries(1);
+          if (series.length >= 2) {
+            prevVal = series[1].valor;
+            change = Number((series[0].valor - prevVal).toFixed(2));
+            v.history = series.slice(0, 180).reverse().map(pt => ({
+              date: pt.fecha,
+              value: pt.valor
+            }));
+          }
+        } catch {}
+        v.value = itemReservas.ultValorInformado;
+        v.lastUpdated = itemReservas.ultFechaInformada;
+        v.prevPublishedValue = prevVal;
+        v.change = change;
+        v.changePercent = prevVal > 0 ? Number(((change / prevVal) * 100).toFixed(2)) : 0;
+        v.comparisonLabel = 'vs. cierre anterior BCRA';
+        v.source = 'BCRA';
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+        v.description = `Total de Reservas Internacionales del Banco Central de la República Argentina obtenidas mediante API oficial de bcra.gob.ar (US$ ${itemReservas.ultValorInformado.toLocaleString('es-AR')} millones al ${itemReservas.ultFechaInformada}).`;
+      }
+    }
+
+    // 2. Dólar Mayorista / Divisa de Referencia (idVariable: 5)
+    const itemMayorista = findItem(5);
+    if (itemMayorista) {
+      const v = variablesStore.find(x => x.id === 'bna_dolar_divisa');
+      if (v) {
+        let prevVal = v.prevPublishedValue || 1539.59;
+        let change = Number((itemMayorista.ultValorInformado - prevVal).toFixed(2));
+        try {
+          const series = await fetchBcraOfficialSeries(5);
+          if (series.length >= 2) {
+            prevVal = Number(series[1].valor.toFixed(2));
+            change = Number((series[0].valor - prevVal).toFixed(2));
+            v.history = series.slice(0, 180).reverse().map(pt => ({
+              date: pt.fecha,
+              value: Number(pt.valor.toFixed(2))
+            }));
+          }
+        } catch {}
+        v.value = Number(itemMayorista.ultValorInformado.toFixed(2));
+        v.lastUpdated = itemMayorista.ultFechaInformada;
+        v.prevPublishedValue = prevVal;
+        v.change = change;
+        v.changePercent = prevVal > 0 ? Number(((change / prevVal) * 100).toFixed(2)) : 0;
+        v.comparisonLabel = 'vs. rueda anterior BCRA';
+        v.source = 'BCRA (Com. A 3500)';
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+        v.description = `Tipo de cambio mayorista de referencia oficial publicado por el BCRA (Com. A 3500) vía API institucional ($${v.value.toLocaleString('es-AR', { minimumFractionDigits: 2 })}).`;
+      }
+    }
+
+    // 3. Unidad de Valor Adquisitivo UVA (idVariable: 31)
+    const itemUva = findItem(31);
+    if (itemUva) {
+      const v = variablesStore.find(x => x.id === 'valor_uva');
+      if (v) {
+        let curVal = itemUva.ultValorInformado;
+        let curDate = itemUva.ultFechaInformada;
+        let prevVal = v.prevPublishedValue || 2174.89;
+        let change = 1.32;
+        try {
+          const series = await fetchBcraOfficialSeries(31);
+          const today = getArgentinaTodayDate();
+          const pastPoints = series.filter(pt => pt.fecha <= today);
+          if (pastPoints.length >= 2) {
+            curVal = pastPoints[0].valor;
+            curDate = pastPoints[0].fecha;
+            prevVal = pastPoints[1].valor;
+            change = Number((curVal - prevVal).toFixed(2));
+            v.history = pastPoints.slice(0, 180).reverse().map(pt => ({
+              date: pt.fecha,
+              value: Number(pt.valor.toFixed(2))
+            }));
+          }
+        } catch {}
+        v.value = Number(curVal.toFixed(2));
+        v.lastUpdated = curDate;
+        v.prevPublishedValue = Number(prevVal.toFixed(2));
+        v.change = change;
+        v.changePercent = prevVal > 0 ? Number(((change / prevVal) * 100).toFixed(2)) : 0;
+        v.comparisonLabel = 'vs. día anterior BCRA';
+        v.source = 'BCRA';
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+        v.description = `Valor diario oficial de la Unidad de Valor Adquisitivo (UVA) fijado por el BCRA conforme a la Ley 27.271 e integrado por API institucional ($${v.value.toLocaleString('es-AR', { minimumFractionDigits: 2 })}).`;
+      }
+    }
+
+    // 4. Coeficiente de Estabilización de Referencia CER (idVariable: 30)
+    const itemCer = findItem(30);
+    if (itemCer) {
+      const v = variablesStore.find(x => x.id === 'coeficiente_cer');
+      if (v) {
+        let curVal = itemCer.ultValorInformado;
+        let curDate = itemCer.ultFechaInformada;
+        let prevVal = v.prevPublishedValue || 861.75;
+        let change = 0.52;
+        try {
+          const series = await fetchBcraOfficialSeries(30);
+          const today = getArgentinaTodayDate();
+          const pastPoints = series.filter(pt => pt.fecha <= today);
+          if (pastPoints.length >= 2) {
+            curVal = pastPoints[0].valor;
+            curDate = pastPoints[0].fecha;
+            prevVal = pastPoints[1].valor;
+            change = Number((curVal - prevVal).toFixed(2));
+            v.history = pastPoints.slice(0, 180).reverse().map(pt => ({
+              date: pt.fecha,
+              value: Number(pt.valor.toFixed(2))
+            }));
+          }
+        } catch {}
+        v.value = Number(curVal.toFixed(2));
+        v.lastUpdated = curDate;
+        v.prevPublishedValue = Number(prevVal.toFixed(2));
+        v.change = change;
+        v.changePercent = prevVal > 0 ? Number(((change / prevVal) * 100).toFixed(2)) : 0;
+        v.comparisonLabel = 'vs. día anterior BCRA';
+        v.source = 'BCRA';
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+        v.description = `Coeficiente de Estabilización de Referencia (CER) elaborado diariamente por el BCRA e integrado vía API institucional (${v.value.toLocaleString('es-AR', { minimumFractionDigits: 2 })}).`;
+      }
+    }
+
+    // 5. Índice para Contratos de Locación ICL (idVariable: 40)
+    const itemIcl = findItem(40);
+    if (itemIcl) {
+      const v = variablesStore.find(x => x.id === 'indice_icl');
+      if (v) {
+        let curVal = itemIcl.ultValorInformado;
+        let curDate = itemIcl.ultFechaInformada;
+        let prevVal = v.prevPublishedValue || 37.15;
+        let change = 0.02;
+        try {
+          const series = await fetchBcraOfficialSeries(40);
+          const today = getArgentinaTodayDate();
+          const pastPoints = series.filter(pt => pt.fecha <= today);
+          if (pastPoints.length >= 2) {
+            curVal = pastPoints[0].valor;
+            curDate = pastPoints[0].fecha;
+            prevVal = pastPoints[1].valor;
+            change = Number((curVal - prevVal).toFixed(2));
+            v.history = pastPoints.slice(0, 180).reverse().map(pt => ({
+              date: pt.fecha,
+              value: Number(pt.valor.toFixed(2))
+            }));
+          }
+        } catch {}
+        v.value = Number(curVal.toFixed(2));
+        v.lastUpdated = curDate;
+        v.prevPublishedValue = Number(prevVal.toFixed(2));
+        v.change = change;
+        v.changePercent = prevVal > 0 ? Number(((change / prevVal) * 100).toFixed(2)) : 0;
+        v.comparisonLabel = 'vs. día anterior BCRA';
+        v.source = 'BCRA';
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+        v.description = `Índice para Contratos de Locación (ICL) oficial del BCRA elaborado para indexar contratos de locación habitacional según la Ley 27.551 (${v.value.toLocaleString('es-AR', { minimumFractionDigits: 2 })}).`;
+      }
+    }
+
+    // 6. Tasa BADLAR de bancos privados (idVariable: 7 o 35)
+    const itemBadlar = findItem(7) || findItem(35);
+    if (itemBadlar) {
+      const v = variablesStore.find(x => x.id === 'tasa_badlar');
+      if (v) {
+        let curVal = itemBadlar.ultValorInformado;
+        let curDate = itemBadlar.ultFechaInformada;
+        let prevVal = v.prevPublishedValue || 22.19;
+        let change = Number((curVal - prevVal).toFixed(2));
+        try {
+          const series = await fetchBcraOfficialSeries(itemBadlar.idVariable);
+          if (series.length >= 2) {
+            curVal = series[0].valor;
+            curDate = series[0].fecha;
+            prevVal = series[1].valor;
+            change = Number((curVal - prevVal).toFixed(2));
+            v.history = series.slice(0, 180).reverse().map(pt => ({
+              date: pt.fecha,
+              value: Number(pt.valor.toFixed(2))
+            }));
+          }
+        } catch {}
+        v.value = Number(curVal.toFixed(2));
+        v.lastUpdated = curDate;
+        v.prevPublishedValue = Number(prevVal.toFixed(2));
+        v.change = change;
+        v.changePercent = prevVal > 0 ? Number(((change / prevVal) * 100).toFixed(2)) : 0;
+        v.comparisonLabel = 'vs. rueda anterior BCRA';
+        v.source = 'BCRA';
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+        v.description = `Tasa BADLAR de bancos privados en pesos promedio ponderada informada oficialmente por la API del BCRA (${v.value.toLocaleString('es-AR', { minimumFractionDigits: 2 })}% TNA).`;
+      }
+    }
+
+    // 7. Inflación mensual (idVariable: 27) y Mediana REM (idVariable: 29)
+    const itemIpc = findItem(27);
+    if (itemIpc) {
+      const v = variablesStore.find(x => x.id === 'ipc_inflacion_mensual');
+      if (v) {
+        v.value = itemIpc.ultValorInformado;
+        v.lastUpdated = itemIpc.ultFechaInformada;
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+      }
+    }
+
+    const itemRem = findItem(29);
+    if (itemRem) {
+      const v = variablesStore.find(x => x.id === 'rem_inflacion_esperada');
+      if (v) {
+        v.value = itemRem.ultValorInformado;
+        v.lastUpdated = itemRem.ultFechaInformada;
+        v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
+      }
+    }
+
+    console.log("[Auto-Sync BCRA] Sincronización oficial exitosa con API v4.0 de bcra.gob.ar (Reservas, Dólar Divisa, UVA, CER, ICL, BADLAR, IPC, REM)");
+  } catch (err) {
+    console.warn("[Auto-Sync BCRA] No se pudo consultar la API oficial del BCRA, manteniendo valores calibrados de contingencia:", err);
+  }
+}
+
 function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
   const result = syncVariablesToCurrentDate(variablesStore);
   variablesStore = result.updatedVariables;
   lastSyncTimestamp = new Date().toISOString();
-  // Sincronizar cotizaciones, inflación y tasas online en segundo plano
+  // Sincronizar cotizaciones, API BCRA, inflación y tasas online en segundo plano
+  syncBCRAOfficialVariables().catch(() => {});
   syncExternalDollarRates().catch(() => {});
   syncExternalInflation().catch(() => {});
   syncExternalPlazoFijoRates().catch(() => {});
@@ -334,6 +638,7 @@ let last0500AMExecutionTime = new Date().toISOString();
 async function execute0500AMDailyNewsCycle() {
   console.log(`[Scheduler 05:00 AM] 🔔 Iniciando proceso de actualización automática de noticias y variables...`);
   await Promise.allSettled([
+    syncBCRAOfficialVariables(),
     syncExternalDollarRates(),
     syncExternalInflation(),
     syncExternalPlazoFijoRates()
@@ -399,13 +704,14 @@ async function startServer() {
       status: "up_to_date",
       totalVariables: variablesStore.length,
       frequency: "cada 5 minutos",
-      sources: ["BNA", "BCRA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
+      sources: ["BCRA (API v4.0)", "BNA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
     });
   });
 
   // API 1c: Trigger manual/forced auto-sync
   app.post("/api/sync/trigger", async (req, res) => {
     await Promise.allSettled([
+      syncBCRAOfficialVariables(),
       syncExternalDollarRates(),
       syncExternalInflation(),
       syncExternalPlazoFijoRates()
@@ -413,13 +719,48 @@ async function startServer() {
     const result = runDailyAutoSync();
     res.json({
       success: true,
-      message: "Revisión de datos ejecutada con fuentes oficiales y mercados en tiempo real",
+      message: "Revisión de datos ejecutada con fuentes oficiales del BCRA (API v4.0) y mercados en tiempo real",
       syncDate: result.syncDate,
       lastSyncTime: lastSyncTimestamp,
       updatedCount: result.updatedCount,
       intervalMinutes: 5,
       variables: variablesStore
     });
+  });
+
+  // API 1d: Proxy oficial para el catálogo de variables del BCRA v4.0
+  app.get("/api/bcra/monetarias", async (req, res) => {
+    try {
+      const catalog = await fetchBcraOfficialCatalog();
+      res.json({
+        status: 200,
+        source: "https://www.bcra.gob.ar/apis-banco-central/",
+        count: catalog.length,
+        results: catalog
+      });
+    } catch (err: any) {
+      res.status(502).json({ error: "No se pudo conectar con la API oficial del BCRA", details: err?.message });
+    }
+  });
+
+  // API 1e: Proxy oficial para la serie histórica de una variable del BCRA v4.0
+  app.get("/api/bcra/monetarias/:id", async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "idVariable debe ser un número entero válido" });
+    }
+    try {
+      const detalle = await fetchBcraOfficialSeries(id);
+      res.json({
+        status: 200,
+        source: "https://www.bcra.gob.ar/apis-banco-central/",
+        idVariable: id,
+        count: detalle.length,
+        results: [{ idVariable: id, detalle }]
+      });
+    } catch (err: any) {
+      res.status(502).json({ error: `No se pudo obtener la serie para la variable ${id} del BCRA`, details: err?.message });
+    }
   });
 
   // API 1d: List comparative electronic personal fixed-term deposit rates of main banks

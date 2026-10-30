@@ -47,10 +47,11 @@ import {
 } from './brazilData';
 import { computeBankRates, computeBrazilBankRates } from './fixedTermData';
 import { getArgentinaTodayDate, formatToDayMonthYear, syncVariablesToCurrentDate } from './dailySync';
+import { fetchUniversalVariables, fetchUniversalBankRates } from './clientSync';
 import { ArgentinaFlag, BrazilFlag } from './components/FlagIcons';
 import { TopicTechVisualizer } from './components/TopicTechVisualizer';
 import { MetaIcon } from './MetaIcon';
-import { getDailyNewsBriefing } from './dailyNews';
+import { getDailyNewsBriefing, formatFriendlyDate } from './dailyNews';
 import { DailyNewsModal } from './components/DailyNewsModal';
 import {
   convertVariableToUsd,
@@ -74,83 +75,66 @@ function EconoLogo({
   onSelectCountry: (c: CountryCode) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 select-none">
+    <div className="flex items-center gap-2.5 sm:gap-3 select-none min-w-0">
       <div
         onClick={onClick}
-        className="flex items-center gap-2.5 cursor-pointer group"
-        title="Econoapp"
+        className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group min-w-0"
+        title="Econoapp · Plataforma de Datos Económicos Oficiales"
       >
-        <div className="relative flex items-center justify-center shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#2a170f] via-[#3a1d12] to-[#1e0e07] p-[1px] shadow-xs group-hover:scale-105 transition-transform duration-200">
-            <div className="w-full h-full rounded-[11px] bg-[#1e0e07] flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/30 via-orange-500/20 to-rose-400/25 pointer-events-none" />
-              <svg
-                className="w-5 h-5 relative z-10"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {/* Modern geometric E ligature */}
-                <path
-                  d="M4 6C4 4.89543 4.89543 4 6 4H18C19.1046 4 20 4.89543 20 6V7C20 7.55228 19.5523 8 19 8H8.5C7.67157 8 7 8.67157 7 9.5V11H16C16.5523 11 17 11.4477 17 12V12.5C17 13.0523 16.5523 13.5 16 13.5H7V15C7 15.8284 7.67157 16.5 8.5 16.5H19C19.5523 16.5 20 16.9477 20 17.5V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6Z"
-                  fill="url(#econo-grad-main)"
-                />
-                {/* Ascending financial vector in sober electric blue */}
-                <path
-                  d="M13 3L20 3M20 3L20 10M20 3L11 12"
-                  stroke="#2563eb"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <circle cx="20" cy="3" r="1.5" fill="#38bdf8" />
-                <defs>
-                  <linearGradient id="econo-grad-main" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#dbeafe" />
-                    <stop offset="1" stopColor="#bfdbfe" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-          </div>
+        {/* Minimalist Tech Monogram */}
+        <div className="w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 shadow-xs group-hover:border-blue-500/80 group-hover:scale-105 transition-all duration-200 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 via-transparent to-cyan-400/20 pointer-events-none" />
+          <svg
+            className="w-4.5 h-4.5 relative z-10"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Minimalist precision financial bars */}
+            <rect x="4" y="13" width="3" height="7" rx="1" fill="#64748b" />
+            <rect x="9.5" y="9" width="3" height="11" rx="1" fill="#94a3b8" />
+            <rect x="15" y="5" width="3" height="15" rx="1" fill="#38bdf8" />
+            {/* Dynamic ascending vector */}
+            <path
+              d="M4 14L10.5 8L16.5 4"
+              stroke="#3b82f6"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx="16.5" cy="4" r="2" fill="#60a5fa" />
+          </svg>
         </div>
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5 leading-none">
-            <span className="text-[17px] font-black tracking-tight text-slate-900 font-sans">
-              Econo<span className="text-blue-600 font-extrabold">app</span>
-            </span>
-            {/* Country flag displayed on the right */}
-            <span className="inline-flex items-center ml-0.5">
-              {country === 'AR' ? (
-                <ArgentinaFlag className="w-5 h-3.5 shadow-2xs" />
-              ) : (
-                <BrazilFlag className="w-5 h-3.5 shadow-2xs" />
-              )}
+
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1 leading-none">
+            <span className="text-[17px] font-black tracking-tight text-slate-950 font-sans">
+              Econo<span className="text-blue-600 font-black">app</span>
             </span>
           </div>
-          <span className="text-[10px] font-medium text-blue-900/60 tracking-tight mt-0.5 whitespace-nowrap">
+          <span className="text-[9px] font-bold tracking-wider text-slate-600 uppercase mt-0.5 whitespace-nowrap">
             {country === 'BR' ? 'Dados Oficiais' : 'Datos Oficiales'}
           </span>
         </div>
       </div>
 
-      {/* Flag Country Selector */}
-      <div className="flex items-center bg-blue-100/60 p-0.5 rounded-lg border border-blue-200/80 shadow-2xs">
+      {/* Flag Country Selector (Compact, Non-overflowing) */}
+      <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/90 shadow-2xs shrink-0">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onSelectCountry('AR');
           }}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-xs ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md transition-all text-[11px] ${
             country === 'AR'
-              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-blue-300'
-              : 'text-slate-500 hover:text-slate-800 opacity-70 hover:opacity-100'
+              ? 'bg-white shadow-xs text-slate-950 font-bold ring-1 ring-slate-300'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
-          title="Argentina"
+          title="Argentina (BCRA, BNA, INDEC)"
         >
-          <ArgentinaFlag className="w-4.5 h-3" />
-          <span className="hidden sm:inline text-[10px] font-bold">ARG</span>
+          <ArgentinaFlag className="w-3.5 h-2.5 sm:w-4 sm:h-3 shadow-2xs" />
+          <span className="text-[10px] font-bold">AR</span>
         </button>
         <button
           type="button"
@@ -158,15 +142,15 @@ function EconoLogo({
             e.stopPropagation();
             onSelectCountry('BR');
           }}
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-xs ${
+          className={`flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md transition-all text-[11px] ${
             country === 'BR'
-              ? 'bg-white shadow-xs text-slate-900 font-semibold ring-1 ring-blue-300'
-              : 'text-slate-500 hover:text-slate-800 opacity-70 hover:opacity-100'
+              ? 'bg-white shadow-xs text-slate-950 font-bold ring-1 ring-slate-300'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
-          title="Brasil"
+          title="Brasil (BCB, IBGE, B3)"
         >
-          <BrazilFlag className="w-4.5 h-3" />
-          <span className="hidden sm:inline text-[10px] font-bold">BRA</span>
+          <BrazilFlag className="w-3.5 h-2.5 sm:w-4 sm:h-3 shadow-2xs" />
+          <span className="text-[10px] font-bold">BR</span>
         </button>
       </div>
     </div>
@@ -627,24 +611,20 @@ export default function App() {
     }
   };
 
-  // Initial load and periodic refresh
+  // Initial load and periodic refresh with universal client/server sync
   const loadData = async (silent = false) => {
     try {
       if (!silent) setIsSyncing(true);
-      const [varsRes, banksRes] = await Promise.all([
-        fetch(`/api/variables?country=${selectedCountry}`),
-        fetch(`/api/plazos-fijos?country=${selectedCountry}`)
+      const [vars, rates] = await Promise.all([
+        fetchUniversalVariables(selectedCountry),
+        fetchUniversalBankRates(selectedCountry)
       ]);
 
-      if (varsRes.ok) {
-        const varsData = await varsRes.json();
-        if (Array.isArray(varsData) && varsData.length > 0) {
-          setVariables(varsData);
-        }
+      if (Array.isArray(vars) && vars.length > 0) {
+        setVariables(vars);
       }
-      if (banksRes.ok) {
-        const banksData = await banksRes.json();
-        if (banksData.rates) setBankRates(banksData.rates);
+      if (rates) {
+        setBankRates(rates);
       }
       setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
@@ -657,21 +637,16 @@ export default function App() {
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch('/api/sync/trigger', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.variables && selectedCountry === 'AR') setVariables(data.variables);
-        if (selectedCountry === 'BR') {
-          setBankRates(computeBrazilBankRates());
-        } else {
-          setBankRates(computeBankRates());
-        }
-        setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        triggerToast('Revisión completada: datos al día con fuentes oficiales');
-      }
+      const [vars, rates] = await Promise.all([
+        fetchUniversalVariables(selectedCountry),
+        fetchUniversalBankRates(selectedCountry)
+      ]);
+      if (Array.isArray(vars) && vars.length > 0) setVariables(vars);
+      if (rates) setBankRates(rates);
+      setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      triggerToast('Datos actualizados con fuentes oficiales');
     } catch {
       await loadData(true);
-      setLastVerifiedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } finally {
       setIsSyncing(false);
     }
@@ -1107,7 +1082,7 @@ export default function App() {
     ? dashboardVariables
     : dashboardVariables.slice((currentPage - 1) * ITEMS_PER_SCREEN, currentPage * ITEMS_PER_SCREEN);
 
-  // Edición 05:00 AM: 5 Claves Económicas del Día (Argentina & El Mundo con Triple Chequeo de Validez)
+  // 5 Claves Económicas del Día (Actualizadas dinámicamente con variables en tiempo real)
   const dailyBriefing = useMemo(() => getDailyNewsBriefing(selectedCountry, variables), [selectedCountry, variables]);
 
   return (
@@ -1184,67 +1159,56 @@ export default function App() {
             </button>
           </nav>
 
-          {/* Zone 3: Currency Switcher, Live Status, Autonomous 5 News & Manual Sync */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Zone 3: Currency Switcher & Manual Sync */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Currency Mode Switcher (ARS vs USD Oficial BNA Desinflado) */}
             {selectedCountry === 'AR' && (
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/90 shadow-2xs">
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/90 shadow-2xs shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsUsdMeasureMode(false)}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-all flex items-center gap-1 ${
+                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-all ${
                     !isUsdMeasureMode
-                      ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-300'
+                      ? 'bg-white text-slate-950 shadow-xs ring-1 ring-slate-300'
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                   title="Medir en Pesos Argentinos (ARS)"
                 >
-                  <span>🇦🇷</span>
-                  <span>ARS</span>
+                  ARS
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsUsdMeasureMode(true)}
-                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-all flex items-center gap-1 ${
+                  className={`px-2 py-1 text-[11px] font-bold rounded-md transition-all ${
                     isUsdMeasureMode
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                   title={`Pasar mediciones a Dólares Estadounidenses al Tipo de Cambio Oficial BNA ($${officialDollarRate.toLocaleString('es-AR')})`}
                 >
-                  <span>💵</span>
-                  <span className="hidden sm:inline">USD</span>
-                  <span className="text-[10px] font-semibold opacity-95">Oficial</span>
+                  USD
                 </button>
               </div>
             )}
 
-            {/* Autonomous 5 News Button */}
+            {/* Autonomous 5 News Button (Hidden on mobile to ensure spacious layout) */}
             <button
               onClick={() => setIsDailyNewsOpen(true)}
-              className="h-8 px-2.5 sm:px-3 text-xs font-bold text-blue-950 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 group"
+              className="hidden md:flex h-8 px-2.5 sm:px-3 text-xs font-bold text-blue-950 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all items-center gap-1.5 shadow-2xs active:scale-95 group shrink-0 cursor-pointer"
               title="5 cosas que la gente debería saber hoy (Argentina y el Mundo)"
             >
               <span className="text-sm group-hover:scale-110 transition-transform">📰</span>
-              <span className="hidden sm:inline">5 Claves del Día</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+              <span>5 Claves</span>
             </button>
 
-            <span
-              className="inline-flex items-center gap-1.5 text-xs text-slate-700 px-2.5 py-1 bg-slate-100/90 rounded-md border border-slate-200"
-              title="Datos sincronizados con fuentes oficiales"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-bold text-slate-800">🟢 En vivo</span>
-            </span>
             <button
               onClick={handleManualSync}
               disabled={isSyncing}
-              className="h-8 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 disabled:opacity-60 shadow-2xs"
+              className="h-8 px-2.5 sm:px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 disabled:opacity-60 shadow-2xs shrink-0 cursor-pointer"
               title="Actualizar datos oficiales"
             >
               <RefreshCw className={`size-3 text-slate-500 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
-              <span className="hidden xs:inline">{isSyncing ? 'Sincronizando' : 'Actualizar'}</span>
+              <span className="hidden sm:inline">{isSyncing ? 'Sincronizando' : 'Actualizar'}</span>
             </button>
           </div>
         </div>
@@ -1270,36 +1234,34 @@ export default function App() {
             <button
               type="button"
               onClick={() => setIsUsdMeasureMode(false)}
-              className="text-[11px] font-bold px-2.5 py-1 bg-white hover:bg-slate-100 border border-blue-300 rounded-lg text-blue-800 shrink-0 ml-2 shadow-2xs transition-all"
+              className="text-[11px] font-bold px-2.5 py-1 bg-white hover:bg-slate-100 border border-blue-300 rounded-lg text-blue-800 shrink-0 ml-2 shadow-2xs transition-all cursor-pointer"
             >
               Ver en ARS
             </button>
           </div>
         )}
 
-        {/* Botón Principal al Principio: 5 Claves Económicas del Día (Argentina & El Mundo) */}
+        {/* Banner Dinámico Principal: 5 Claves Económicas del Día (Se actualiza automáticamente cada día con variables en tiempo real) */}
         <div
           onClick={() => setIsDailyNewsOpen(true)}
-          className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center justify-between gap-3 cursor-pointer hover:shadow-xs hover:border-blue-400/80 transition-all border border-blue-900/60 shadow-2xs group"
-          title="Abrir 5 Claves Económicas del Día (Edición 05:00 AM · Triple Chequeo de Validez)"
+          className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center justify-between gap-3 cursor-pointer hover:shadow-xs hover:border-blue-400/80 transition-all border border-blue-900/60 shadow-2xs group"
+          title="Abrir 5 Claves Económicas del Día"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-sm shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
               📰
             </span>
-            <div className="truncate">
+            <div className="truncate min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white group-hover:text-blue-200 transition-colors">
-                  {selectedCountry === 'BR' ? '5 Coisas que Você Precisa Saber Hoje (Brasil & Mundo)' : '5 Cosas que Deberías Saber Hoy (Argentina & El Mundo)'}
+                <span className="text-xs sm:text-sm font-bold text-white group-hover:text-blue-200 transition-colors">
+                  {dailyBriefing.title}
                 </span>
                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/30 text-blue-200 border border-blue-400/30 font-bold uppercase shrink-0">
-                  05:00 AM
+                  {selectedCountry === 'BR' ? 'Hoje' : 'Hoy'}
                 </span>
               </div>
-              <span className="text-[10px] text-slate-300 block truncate mt-0.5">
-                {selectedCountry === 'BR'
-                  ? 'Copom/Selic, IPCA, Dólar PTAX, Fed e Safra resumidos em 2 min'
-                  : 'Riesgo País (1.042 pb), Dólar, IPC, Cosecha/Reservas y tasas de la Fed en 2 min'}
+              <span className="text-[10px] sm:text-[11px] text-slate-300 block truncate mt-0.5">
+                {dailyBriefing.subtitle}
               </span>
             </div>
           </div>
@@ -1744,9 +1706,6 @@ export default function App() {
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/70">
                                   🏛️ BNA Minorista
                                 </span>
-                                <span className="text-[10px] text-emerald-700 font-bold">
-                                  ⚡ En vivo
-                                </span>
                               </div>
                               <h3 className="text-sm sm:text-base font-bold text-slate-950 group-hover:text-blue-600 transition-colors truncate mt-0.5">
                                 Dólar Minorista Billete
@@ -1842,12 +1801,12 @@ export default function App() {
                 {/* Grid Visual de Otras Cotizaciones Clave en Argentina (Estilo Meta Cards) */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   {[
-                    { id: 'riesgo_pais_embi', label: 'Riesgo País', defaultVal: '1.042 pb' },
-                    { id: 'dolar_mep_byma', label: 'Dólar MEP', defaultVal: '$1.145,20' },
-                    { id: 'dolar_ccl_byma', label: 'Dólar CCL', defaultVal: '$1.184,60' },
-                    { id: 'dolar_blue', label: 'Dólar Libre', defaultVal: '$1.225,00' },
-                    { id: 'dolar_tarjeta', label: 'Dólar Tarjeta', defaultVal: '$1.688,00' },
-                    { id: 'reservas_brutas', label: 'Reservas BCRA', defaultVal: 'US$ 28.480 M' }
+                    { id: 'riesgo_pais_embi', label: 'Riesgo País', defaultVal: '782 pb' },
+                    { id: 'dolar_mep_byma', label: 'Dólar MEP', defaultVal: '$1.568,80' },
+                    { id: 'dolar_ccl_byma', label: 'Dólar CCL', defaultVal: '$1.650,30' },
+                    { id: 'dolar_blue', label: 'Dólar Blue', defaultVal: '$1.565,00' },
+                    { id: 'dolar_tarjeta', label: 'Dólar Tarjeta', defaultVal: '$2.028,00' },
+                    { id: 'reservas_brutas', label: 'Reservas BCRA', defaultVal: 'US$ 50.482 M' }
                   ].map(item => {
                     const targetVar = variables.find(v => v.id === item.id);
                     const displayVal = targetVar ? formatVariableValue(targetVar) : item.defaultVal;
@@ -2010,9 +1969,6 @@ export default function App() {
                   <span>💰</span>
                   <span>{selectedCountry === 'BR' ? 'Simulador de Renda Fixa CDB' : 'Simulador de Plazo Fijo'}</span>
                 </h3>
-                <span className="text-xs text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200/60 font-semibold">
-                  🏛️ Tasas Oficiales
-                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2851,8 +2807,6 @@ export default function App() {
                 <span className="text-slate-800 font-semibold">Tesouro</span>
                 <span>·</span>
                 <span className="text-slate-800 font-semibold">ANFAVEA</span>
-                <span>·</span>
-                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200/60">🟢 En vivo</span>
               </>
             ) : (
               <>
@@ -2867,8 +2821,6 @@ export default function App() {
                 <span className="text-slate-800 font-semibold">ADEFA</span>
                 <span>·</span>
                 <span className="text-slate-800 font-semibold">BYMA</span>
-                <span>·</span>
-                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200/60">🟢 En vivo</span>
               </>
             )}
           </div>

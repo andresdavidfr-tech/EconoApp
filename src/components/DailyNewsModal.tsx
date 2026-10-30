@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { X, Check, Copy, Newspaper, Clock, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { DailyBriefing } from '../dailyNews';
-import { runTripleCheckValidation } from '../newsValidation';
+import React, { useState } from 'react';
+import { X, Check, Copy, Newspaper, Calendar } from 'lucide-react';
+import { DailyBriefing, formatFriendlyDate } from '../dailyNews';
 
 interface DailyNewsModalProps {
   isOpen: boolean;
@@ -12,15 +11,11 @@ interface DailyNewsModalProps {
 export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProps) {
   const [copied, setCopied] = useState(false);
 
-  const validation = useMemo(() => {
-    return runTripleCheckValidation(briefing);
-  }, [briefing]);
-
   if (!isOpen) return null;
 
   const handleCopy = () => {
-    const textToCopy = `${briefing.title} - ${briefing.subtitle}\n\n` +
-      `Edición Diaria 05:00 AM (ART) · Triple Chequeo de Validez Completado\n\n` +
+    const textToCopy = `${briefing.title}\n${briefing.subtitle}\n\n` +
+      `Fecha: ${formatFriendlyDate(briefing.lastUpdatedDate)}\n\n` +
       briefing.items.map(item => (
         `#${item.order} ${item.emoji} ${item.title}\n` +
         `Dato: ${item.highlightNumber} (${item.highlightLabel})\n` +
@@ -43,18 +38,18 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
           <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
           
           <div className="flex items-center justify-between gap-3 relative z-10">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span className="w-8 h-8 rounded-xl bg-blue-600/30 border border-blue-400/40 text-blue-300 flex items-center justify-center shrink-0">
                 <Newspaper className="size-4" />
               </span>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-200 border border-blue-400/30 flex items-center gap-1">
-                    <Clock className="size-3 text-blue-300" />
-                    Edición Diaria · 05:00 AM
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-200 border border-blue-400/30 flex items-center gap-1.5 capitalize">
+                    <Calendar className="size-3 text-blue-300" />
+                    {formatFriendlyDate(briefing.lastUpdatedDate)}
                   </span>
                   <span className="text-[10px] text-slate-300">
-                    ⏱️ ~{briefing.readingTimeMinutes} min
+                    ⏱️ ~{briefing.readingTimeMinutes} min de lectura
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-bold tracking-tight text-white mt-1">
@@ -66,7 +61,7 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
             <button
               onClick={onClose}
               className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
-              title="Cerrar modal"
+              title="Cerrar"
             >
               <X className="size-4" />
             </button>
@@ -76,16 +71,12 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
             {briefing.subtitle}
           </p>
 
-          {/* Triple Check Status Bar */}
+          {/* Official Source Strip */}
           <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2 text-[11px] text-blue-200/90 relative z-10 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-blue-400 shrink-0" />
-              <span className="font-semibold text-white">Triple chequeo de validez:</span>
-              <span className="text-blue-200">1. Fuentes Oficiales ✓ · 2. Cifras y Tasas ✓ · 3. Corte 05:00 AM ✓</span>
+              <span className="font-semibold text-white">Fuentes oficiales primarias:</span>
+              <span className="text-blue-200">BCRA · INDEC · BNA · BYMA · JP Morgan · YPF / SEC · FMI</span>
             </div>
-            <span className="text-[10px] text-blue-300/80 bg-blue-900/40 px-2 py-0.5 rounded border border-blue-400/20">
-              Actualizado hoy 05:00 AM
-            </span>
           </div>
         </div>
 
@@ -127,13 +118,20 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
                     {item.summary}
                   </p>
 
+                  {/* Insight derivado de los datos */}
+                  {item.whyItMatters && (
+                    <div className="bg-blue-50/60 border border-blue-200/70 rounded-xl p-2.5 text-[11px] text-slate-800 flex items-start gap-2 shadow-2xs">
+                      <span className="text-xs shrink-0">💡</span>
+                      <div>
+                        <strong className="text-blue-950 font-bold block mb-0.5">Insight de los datos:</strong>
+                        <span className="leading-relaxed text-slate-700">{item.whyItMatters}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Source Footer */}
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
                     <span>Fuente: <strong className="text-slate-700 font-semibold">{item.source}</strong></span>
-                    <span className="text-slate-500 text-[10px] flex items-center gap-1">
-                      <CheckCircle2 className="size-3 text-blue-600" />
-                      Triple verificación conforme
-                    </span>
                   </div>
                 </div>
               </div>
@@ -146,7 +144,7 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
           <button
             type="button"
             onClick={handleCopy}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1.5 transition-colors shadow-2xs"
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
             title="Copiar las 5 noticias completas al portapapeles"
           >
             {copied ? (
@@ -165,7 +163,7 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs"
+            className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs cursor-pointer"
           >
             Entendido
           </button>

@@ -122,7 +122,7 @@ function checkQuantitativeCoherence(items: DailyNewsItem[]): ValidationCheckResu
 
 /**
  * Chequeo 3: Verificación de Consistencia Temporal y Neutralidad
- * Valida la integridad de la edición para el corte de las 05:00 AM y neutralidad fáctica.
+ * Valida la integridad de la edición diaria y neutralidad fáctica.
  */
 function checkTemporalAndFactualIntegrity(briefing: DailyBriefing): ValidationCheckResult {
   const details: string[] = [];
@@ -132,7 +132,7 @@ function checkTemporalAndFactualIntegrity(briefing: DailyBriefing): ValidationCh
     allValid = false;
     details.push("El resumen no contiene ítems informativos.");
   } else {
-    details.push(`Estructura completa de 5 claves con corte automatizado de las 05:00 AM validada.`);
+    details.push(`Estructura completa de 5 claves con sincronización diaria validada.`);
   }
 
   // Verificar que el tiempo de lectura sea razonable y no excesivo
@@ -144,7 +144,7 @@ function checkTemporalAndFactualIntegrity(briefing: DailyBriefing): ValidationCh
   return {
     id: "temporal_integrity",
     title: "3. Consistencia Temporal y Neutralidad Factual",
-    description: "Corte diario automático a las 05:00 AM y apego a hechos observables sin sesgo de opinión.",
+    description: "Sincronización diaria automatizada y apego a hechos observables sin sesgo de opinión.",
     passed: allValid,
     details
   };
@@ -168,7 +168,7 @@ export function runTripleCheckValidation(briefing: DailyBriefing): TripleCheckRe
   return {
     isCertified,
     verifiedAt: new Date().toISOString(),
-    publicationTime: "05:00 AM (ART)",
+    publicationTime: briefing.editionTime || new Date().toISOString().split('T')[0],
     checks: [check1, check2, check3],
     errors
   };

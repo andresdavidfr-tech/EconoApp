@@ -29,35 +29,35 @@ export const VERIFIED_SNAPSHOT: Record<string, Entry> = {
   dolar_tarjeta: { value: 2008.5, date: '2026-10-20', append: true, note: 'Oficial + 30%' },
   dolar_cripto: { value: 1627.12, date: '2026-10-20', append: true, note: 'Cripto (cierre)' },
 
-  // BCRA
+  // BCRA (API Oficial v4.0 - https://www.bcra.gob.ar/apis-banco-central/)
   reservas_brutas: {
-    value: 49839, date: '2026-10-13',
-    points: [{ date: '2026-10-02', value: 48653 }, { date: '2026-10-13', value: 49839 }],
-    note: 'Reservas brutas, millones de USD'
+    value: 50603, date: '2026-10-28',
+    points: [{ date: '2026-10-26', value: 50482 }, { date: '2026-10-27', value: 50579 }, { date: '2026-10-28', value: 50603 }],
+    note: 'Reservas Internacionales BCRA (api.bcra.gob.ar id: 1)'
   },
   valor_uva: {
-    value: 2156.58, date: '2026-10-15',
-    points: [{ date: '2026-10-13', value: 2150.53 }, { date: '2026-10-15', value: 2156.58 }],
-    note: 'UVA publicada por el BCRA'
+    value: 2176.21, date: '2026-10-30',
+    points: [{ date: '2026-10-28', value: 2173.57 }, { date: '2026-10-29', value: 2174.89 }, { date: '2026-10-30', value: 2176.21 }],
+    note: 'UVA publicada por el BCRA (api.bcra.gob.ar id: 31)'
   },
   coeficiente_cer: {
-    value: cerFromUva(2156.58), date: '2026-10-15',
-    points: [{ date: '2026-10-13', value: cerFromUva(2150.53) }, { date: '2026-10-15', value: cerFromUva(2156.58) }],
-    note: 'Derivado de la UVA con la fórmula oficial del BCRA'
+    value: 862.28, date: '2026-10-30',
+    points: [{ date: '2026-10-28', value: 861.23 }, { date: '2026-10-29', value: 861.76 }, { date: '2026-10-30', value: 862.28 }],
+    note: 'CER oficial publicado por el BCRA (api.bcra.gob.ar id: 30)'
   },
   indice_icl: {
-    value: 34.45, date: '2026-07-07',
-    points: [{ date: '2025-10-01', value: 27.75 }, { date: '2026-07-07', value: 34.45 }],
-    note: 'Último ICL verificado (julio 2026)'
+    value: 37.17, date: '2026-10-30',
+    points: [{ date: '2026-10-28', value: 37.13 }, { date: '2026-10-29', value: 37.15 }, { date: '2026-10-30', value: 37.17 }],
+    note: 'Índice ICL oficial publicado por el BCRA (api.bcra.gob.ar id: 40)'
   },
   tasa_badlar: {
-    value: 22.94, date: '2026-10-13',
-    points: [{ date: '2026-03-20', value: 24.80 }, { date: '2026-09-20', value: 23.10 }, { date: '2026-10-13', value: 22.94 }],
-    note: 'BADLAR promedio bancos privados informado por BCRA'
+    value: 23.13, date: '2026-10-29',
+    points: [{ date: '2026-10-27', value: 23.50 }, { date: '2026-10-28', value: 22.19 }, { date: '2026-10-29', value: 23.13 }],
+    note: 'BADLAR promedio bancos privados informado por BCRA (api.bcra.gob.ar id: 7)'
   },
   tasa_plazo_fijo_bna: {
-    value: 19.25, date: '2026-10-13',
-    points: [{ date: '2026-03-26', value: 22.00 }, { date: '2026-09-20', value: 20.00 }, { date: '2026-10-13', value: 19.25 }],
+    value: 19.25, date: '2026-10-29',
+    points: [{ date: '2026-03-26', value: 22.00 }, { date: '2026-09-20', value: 20.00 }, { date: '2026-10-29', value: 19.25 }],
     note: 'Plazo fijo BNA, canal electrónico, TNA oficial'
   },
 
