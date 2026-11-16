@@ -463,6 +463,18 @@ function ChartScaleControls({
   );
 }
 
+/** Indica si el valor se consultó recientemente a una fuente o es un valor de referencia. */
+function freshnessInfo(v: { fetchedAt?: string }): { text: string; live: boolean } {
+  const t = v.fetchedAt ? Date.parse(v.fetchedAt) : NaN;
+  if (Number.isFinite(t)) {
+    const mins = Math.round((Date.now() - t) / 60000);
+    if (mins < 30) return { text: '● en vivo', live: true };
+    const d = new Date(t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' });
+    return { text: `Última consulta a la fuente: ${d}`, live: false };
+  }
+  return { text: 'Valor de referencia (sin consulta a la fuente)', live: false };
+}
+
 export default function App() {
   // --- Country Selection State (defaults to AR or persisted) ---
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
@@ -1872,6 +1884,7 @@ export default function App() {
 
                   <div className="text-left sm:text-right shrink-0">
                     <span className="text-xs text-slate-500 block">Valor Actualizado</span>
+                    <span className={`text-[10px] block ${freshnessInfo(activeVar).live ? 'text-emerald-600' : 'text-amber-600'}`}>{freshnessInfo(activeVar).text}</span>
                     <span className="text-xl sm:text-2xl font-black text-slate-950 tabular-nums">
                       {formatVariableValue(activeVar)}
                     </span>
@@ -2200,6 +2213,7 @@ export default function App() {
 
                     <div className="text-left sm:text-right shrink-0">
                       <span className="text-xs text-slate-500 block">Valor Actualizado</span>
+                      <span className={`text-[10px] block ${freshnessInfo(activeVar).live ? 'text-emerald-600' : 'text-amber-600'}`}>{freshnessInfo(activeVar).text}</span>
                       <span className="text-2xl font-black tracking-tight text-slate-950 tabular-nums">
                         {formatVariableValue(activeVar)}
                       </span>

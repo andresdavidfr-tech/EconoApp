@@ -9,7 +9,7 @@ import { computeBankRates, computeBrazilBankRates, updateActiveBankRate } from "
 import { getDailyNewsBriefing, DailyBriefing } from "./src/dailyNews";
 import { runTripleCheckValidation, TripleCheckReport } from "./src/newsValidation";
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Memory store for economic variables to persist updates in memory during runtime sessions
 let variablesStore: EconomicVariable[] = [...ARGENTINA_ECONOMIC_VARIABLES];
@@ -26,6 +26,8 @@ function applyVariableRateUpdate(
   description: string
 ) {
   v.value = venta;
+  v.live = true;
+  v.fetchedAt = new Date().toISOString();
   v.lastUpdated = today;
   v.description = description;
 
@@ -54,7 +56,7 @@ function applyVariableRateUpdate(
  */
 async function syncExternalDollarRates() {
   try {
-    const res = await fetch("https://dolarapi.com/v1/dolares");
+    const res = await fetch("https://dolarapi.com/v1/dolares", { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const data = (await res.json()) as Array<{
         moneda: string;
@@ -159,7 +161,7 @@ async function syncExternalDollarRates() {
  */
 async function syncExternalInflation() {
   try {
-    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/inflacion");
+    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/inflacion", { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const data = (await res.json()) as Array<{ fecha: string; valor: number }>;
       if (Array.isArray(data) && data.length > 0) {
@@ -167,13 +169,15 @@ async function syncExternalInflation() {
         const v = variablesStore.find(x => x.id === "ipc_inflacion_mensual");
         if (v && latest.valor) {
           v.value = latest.valor;
+          v.live = true;
+          v.fetchedAt = new Date().toISOString();
           const today = getArgentinaTodayDate();
           v.lastUpdated = today;
 
           // Obtener inflación interanual
           let interanualStr = "33,4%";
           try {
-            const resIa = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/inflacionInteranual");
+            const resIa = await fetch("https://api.argentinadatos.com/v1/finanzas/indices/inflacionInteranual", { signal: AbortSignal.timeout(8000) });
             if (resIa.ok) {
               const dataIa = await resIa.json();
               if (Array.isArray(dataIa) && dataIa.length > 0) {
@@ -207,7 +211,7 @@ async function syncExternalInflation() {
  */
 async function syncExternalPlazoFijoRates() {
   try {
-    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo");
+    const res = await fetch("https://api.argentinadatos.com/v1/finanzas/tasas/plazoFijo", { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const data = (await res.json()) as Array<{
         entidad: string;
@@ -361,6 +365,8 @@ async function syncBCRAOfficialVariables() {
           }
         } catch {}
         v.value = itemReservas.ultValorInformado;
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = itemReservas.ultFechaInformada;
         v.prevPublishedValue = prevVal;
         v.change = change;
@@ -391,6 +397,8 @@ async function syncBCRAOfficialVariables() {
           }
         } catch {}
         v.value = Number(itemMayorista.ultValorInformado.toFixed(2));
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = itemMayorista.ultFechaInformada;
         v.prevPublishedValue = prevVal;
         v.change = change;
@@ -427,6 +435,8 @@ async function syncBCRAOfficialVariables() {
           }
         } catch {}
         v.value = Number(curVal.toFixed(2));
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = curDate;
         v.prevPublishedValue = Number(prevVal.toFixed(2));
         v.change = change;
@@ -463,6 +473,8 @@ async function syncBCRAOfficialVariables() {
           }
         } catch {}
         v.value = Number(curVal.toFixed(2));
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = curDate;
         v.prevPublishedValue = Number(prevVal.toFixed(2));
         v.change = change;
@@ -499,6 +511,8 @@ async function syncBCRAOfficialVariables() {
           }
         } catch {}
         v.value = Number(curVal.toFixed(2));
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = curDate;
         v.prevPublishedValue = Number(prevVal.toFixed(2));
         v.change = change;
@@ -533,6 +547,8 @@ async function syncBCRAOfficialVariables() {
           }
         } catch {}
         v.value = Number(curVal.toFixed(2));
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = curDate;
         v.prevPublishedValue = Number(prevVal.toFixed(2));
         v.change = change;
@@ -550,6 +566,8 @@ async function syncBCRAOfficialVariables() {
       const v = variablesStore.find(x => x.id === 'ipc_inflacion_mensual');
       if (v) {
         v.value = itemIpc.ultValorInformado;
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = itemIpc.ultFechaInformada;
         v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
       }
@@ -560,6 +578,8 @@ async function syncBCRAOfficialVariables() {
       const v = variablesStore.find(x => x.id === 'rem_inflacion_esperada');
       if (v) {
         v.value = itemRem.ultValorInformado;
+        v.live = true;
+        v.fetchedAt = new Date().toISOString();
         v.lastUpdated = itemRem.ultFechaInformada;
         v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
       }
@@ -683,9 +703,39 @@ function schedule0500AMDailyJob() {
 execute0500AMDailyNewsCycle().catch(() => {});
 schedule0500AMDailyJob();
 
+// --- Seguridad: endpoints de escritura/costosos ---
+const rateBuckets = new Map<string, number[]>();
+function rateLimited(key: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const hits = (rateBuckets.get(key) || []).filter(t => now - t < windowMs);
+  if (hits.length >= max) { rateBuckets.set(key, hits); return true; }
+  hits.push(now);
+  rateBuckets.set(key, hits);
+  return false;
+}
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, hits] of rateBuckets) if (!hits.some(t => now - t < 10 * 60 * 1000)) rateBuckets.delete(k);
+}, 10 * 60 * 1000).unref();
+
+/** Los endpoints que modifican datos exigen ADMIN_TOKEN (header x-admin-token). Sin token configurado quedan deshabilitados. */
+function requireAdmin(req: express.Request, res: express.Response): boolean {
+  const token = process.env.ADMIN_TOKEN;
+  if (!token) {
+    res.status(403).json({ error: "Endpoint deshabilitado (ADMIN_TOKEN no configurado)." });
+    return false;
+  }
+  if (req.get("x-admin-token") !== token) {
+    res.status(401).json({ error: "No autorizado." });
+    return false;
+  }
+  return true;
+}
+
 async function startServer() {
   const app = express();
-  app.use(express.json());
+  app.set("trust proxy", 1);
+  app.use(express.json({ limit: "100kb" }));
 
   // API 1: Health check
   app.get("/api/health", (req, res) => {
@@ -694,15 +744,21 @@ async function startServer() {
 
   // API 1b: Sync Status & Configuration
   app.get("/api/sync/status", (req, res) => {
-    const today = getArgentinaTodayDate();
+    const WINDOW_MS = 30 * 60 * 1000;
+    const stamps = variablesStore.map(v => (v.fetchedAt ? Date.parse(v.fetchedAt) : 0));
+    const lastFetch = Math.max(0, ...stamps);
+    const liveCount = stamps.filter(t => Date.now() - t < WINDOW_MS).length;
     res.json({
       autoUpdate: true,
       intervalMinutes: 5,
       intervalMs: FIVE_MINUTES_MS,
-      lastSyncDate: today,
-      lastSyncTime: lastSyncTimestamp,
-      status: "up_to_date",
+      lastSyncDate: lastFetch ? new Date(lastFetch).toISOString().split("T")[0] : null,
+      lastSyncTime: lastFetch ? new Date(lastFetch).toISOString() : null,
+      // "up_to_date" solo si alguna fuente respondió en los últimos 30 minutos
+      status: liveCount > 0 ? "up_to_date" : "degraded",
       totalVariables: variablesStore.length,
+      liveVariables: liveCount,
+      referenceVariables: variablesStore.length - liveCount,
       frequency: "cada 5 minutos",
       sources: ["BCRA (API v4.0)", "BNA", "INDEC", "MECON", "ARCA", "BCB", "IBGE", "B3"]
     });
@@ -710,6 +766,9 @@ async function startServer() {
 
   // API 1c: Trigger manual/forced auto-sync
   app.post("/api/sync/trigger", async (req, res) => {
+    if (rateLimited(`trigger:${req.ip}`, 6, 60 * 1000)) {
+      return res.status(429).json({ error: "Demasiadas solicitudes. Probá de nuevo en un minuto." });
+    }
     await Promise.allSettled([
       syncBCRAOfficialVariables(),
       syncExternalDollarRates(),
@@ -827,6 +886,7 @@ async function startServer() {
 
   // API 1f: Forzar ejecución del ciclo de las 05:00 AM con Triple Chequeo
   app.post("/api/news/daily/refresh-05am", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
     try {
       await execute0500AMDailyNewsCycle();
       const country = (req.query.country as string)?.toUpperCase() === 'BR' ? 'BR' : 'AR';
@@ -864,8 +924,9 @@ async function startServer() {
 
   // API 3: Update a variable (simulating automated/manual fetch)
   app.post("/api/variables/:id", (req, res) => {
+    if (!requireAdmin(req, res)) return;
     const { id } = req.params;
-    const { value, lastUpdated } = req.body;
+    const { value, lastUpdated } = req.body || {};
     const varIdx = variablesStore.findIndex(v => v.id === id);
 
     if (varIdx === -1) {
