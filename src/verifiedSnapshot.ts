@@ -60,6 +60,16 @@ export const VERIFIED_SNAPSHOT: Record<string, Entry> = {
     points: [{ date: '2026-03-26', value: 22.00 }, { date: '2026-09-20', value: 20.00 }, { date: '2026-10-29', value: 19.25 }],
     note: 'Plazo fijo BNA, canal electrónico, TNA oficial'
   },
+  riesgo_pais_embi: {
+    value: 829, date: '2026-11-12',
+    points: [
+      { date: '2026-11-09', value: 873 },
+      { date: '2026-11-10', value: 853 },
+      { date: '2026-11-11', value: 852 },
+      { date: '2026-11-12', value: 829 }
+    ],
+    note: 'EMBI+ JP Morgan / Bloomberg Línea Argentina'
+  },
 
   // INDEC / REM (datos mensuales: la fecha es el mes de referencia)
   ipc_inflacion_mensual: {
@@ -95,6 +105,33 @@ export const VERIFIED_SNAPSHOT: Record<string, Entry> = {
     value: 3.2, date: '2026-09-01',
     points: [{ date: '2026-09-01', value: 3.2 }],
     note: 'Inflación mayorista septiembre 2026'
+  },
+  tasa_desempleo_indec: {
+    value: 7.9, date: '2026-06-30',
+    points: [
+      { date: '2024-03-31', value: 7.7 },
+      { date: '2024-06-30', value: 7.6 },
+      { date: '2024-09-30', value: 6.9 },
+      { date: '2024-12-31', value: 6.4 },
+      { date: '2025-03-31', value: 7.9 },
+      { date: '2025-06-30', value: 7.6 },
+      { date: '2025-09-30', value: 6.6 },
+      { date: '2025-12-31', value: 7.5 },
+      { date: '2026-03-31', value: 7.8 },
+      { date: '2026-06-30', value: 7.9 }
+    ],
+    note: 'Tasa de desocupación EPH INDEC 2T 2026 (31 aglomerados urbanos)'
+  },
+  tasa_pobreza_indec: {
+    value: 32.3, date: '2026-06-30',
+    points: [
+      { date: '2024-06-30', value: 52.9 },
+      { date: '2024-12-31', value: 38.1 },
+      { date: '2025-06-30', value: 31.6 },
+      { date: '2025-12-31', value: 28.2 },
+      { date: '2026-06-30', value: 32.3 }
+    ],
+    note: 'Incidencia de la pobreza en personas EPH INDEC 1S 2026 (publicado el 24-09-2026)'
   },
 };
 

@@ -33,7 +33,8 @@ import {
   Euro,
   Coins,
   ShieldCheck,
-  FileText
+  FileText,
+  Users
 } from 'lucide-react';
 import { TopicId } from './types';
 
@@ -320,6 +321,24 @@ export function getMetaIconConfig(variableId: string, topicId?: TopicId | string
         bgColor: 'bg-emerald-50/90',
         borderColor: 'border-emerald-200/80',
         label: 'Salario Formal'
+      };
+
+    case 'tasa_desempleo_indec':
+      return {
+        icon: Users,
+        color: 'text-amber-700',
+        bgColor: 'bg-amber-50/90',
+        borderColor: 'border-amber-200/80',
+        label: 'Desocupación EPH'
+      };
+
+    case 'tasa_pobreza_indec':
+      return {
+        icon: Scale,
+        color: 'text-rose-700',
+        bgColor: 'bg-rose-50/90',
+        borderColor: 'border-rose-200/80',
+        label: 'Pobreza EPH'
       };
 
     case 'escrituras_caba':

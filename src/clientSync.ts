@@ -12,11 +12,6 @@ interface DolarItem {
   fechaActualizacion?: string;
 }
 
-interface AmbitoRiesgo {
-  valor?: number;
-  fecha?: string;
-}
-
 /**
  * Universal Data Fetcher:
  * Works seamlessly in both full-stack Node environments and static Vercel deployments.
@@ -47,7 +42,8 @@ export async function fetchUniversalVariables(country: 'AR' | 'BR'): Promise<Eco
 
       const [dolarRes, riesgoRes] = await Promise.allSettled([
         fetch('https://dolarapi.com/v1/dolares', { signal: AbortSignal.timeout(5000) }),
-        fetch('https://dolarapi.com/v1/ambito/riesgo-pais', { signal: AbortSignal.timeout(5000) })
+        fetch('/api/riesgo-pais', { signal: AbortSignal.timeout(4500) })
+          .then(r => r.ok ? r : fetch('https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais/ultimo', { signal: AbortSignal.timeout(5000) }))
       ]);
 
       if (dolarRes.status === 'fulfilled' && dolarRes.value.ok) {
@@ -88,25 +84,56 @@ export async function fetchUniversalVariables(country: 'AR' | 'BR'): Promise<Eco
         if (mayorista) updateVar('bna_dolar_divisa', mayorista.venta, mayorista.compra);
         if (tarjeta) updateVar('dolar_tarjeta', tarjeta.venta, tarjeta.compra);
         if (cripto) updateVar('dolar_cripto', cripto.venta, cripto.compra);
+
+        // Garantizar coherencia matemática estricta del Dólar Tarjeta (+30% sobre oficial BNA)
+        const bnaVar = cloned.find(item => item.id === 'bna_dolar_billete');
+        const tarjetaVar = cloned.find(item => item.id === 'dolar_tarjeta');
+        if (bnaVar && tarjetaVar) {
+          const expectedVenta = Number((bnaVar.value * 1.30).toFixed(2));
+          const prevBna = bnaVar.prevPublishedValue || (bnaVar.value - bnaVar.change);
+          const expectedPrev = Number((prevBna * 1.30).toFixed(2));
+          tarjetaVar.value = expectedVenta;
+          tarjetaVar.prevPublishedValue = expectedPrev;
+          tarjetaVar.change = Number((expectedVenta - expectedPrev).toFixed(2));
+          tarjetaVar.changePercent = bnaVar.changePercent;
+          tarjetaVar.lastUpdated = bnaVar.lastUpdated;
+          tarjetaVar.comparisonLabel = bnaVar.comparisonLabel;
+        }
       }
 
       if (riesgoRes.status === 'fulfilled' && riesgoRes.value.ok) {
-        const riesgo: AmbitoRiesgo = await riesgoRes.value.json();
+        const riesgo: {
+          valor?: number;
+          prevValor?: number;
+          change?: number;
+          fecha?: string;
+          source?: string;
+          sourceUrl?: string;
+          bloombergHeadline?: string;
+        } = await riesgoRes.value.json();
         if (riesgo && typeof riesgo.valor === 'number' && riesgo.valor > 0) {
           const v = cloned.find(item => item.id === 'riesgo_pais_embi');
           if (v) {
-            const prev = v.value;
-            v.value = Math.round(riesgo.valor);
-            v.lastUpdated = todayStr;
+            const curVal = Math.round(riesgo.valor);
+            const prev = typeof riesgo.prevValor === 'number' ? Math.round(riesgo.prevValor) : (v.prevPublishedValue || 852);
+            const delta = typeof riesgo.change === 'number' ? Math.round(riesgo.change) : (curVal - prev);
+            v.value = curVal;
+            v.lastUpdated = riesgo.fecha || todayStr;
             v.prevPublishedValue = prev;
-            v.change = Math.round(v.value - prev);
-            v.changePercent = prev > 0 ? Number((((v.value - prev) / prev) * 100).toFixed(2)) : 0;
+            v.change = delta;
+            v.changePercent = delta;
+            v.changeUnit = 'pb';
+            v.source = riesgo.source || 'Bloomberg Línea / JP Morgan';
+            v.sourceUrl = riesgo.sourceUrl || 'https://www.bloomberglinea.com/latinoamerica/argentina/';
+            v.comparisonLabel = 'vs. cierre anterior JP Morgan';
+            const bloombergNote = riesgo.bloombergHeadline ? ` Cobertura Bloomberg Línea: "${riesgo.bloombergHeadline}".` : '';
+            v.description = `Diferencial de rendimiento entre bonos soberanos emitidos por Argentina y los títulos del Tesoro de EE.UU. (EMBI+ JP Morgan) seguido vía Bloomberg Línea Argentina (${curVal} pb al ${v.lastUpdated}).${bloombergNote}`;
             if (Array.isArray(v.history) && v.history.length > 0) {
               const lastPt = v.history[v.history.length - 1];
-              if (lastPt.date === todayStr) {
-                lastPt.value = v.value;
+              if (lastPt.date === v.lastUpdated) {
+                lastPt.value = curVal;
               } else {
-                v.history.push({ date: todayStr, value: v.value });
+                v.history.push({ date: v.lastUpdated, value: curVal });
               }
             }
           }
@@ -143,7 +170,13 @@ export async function fetchUniversalVariables(country: 'AR' | 'BR'): Promise<Eco
                 v.value = hit.ultValorInformado;
                 v.lastUpdated = hit.ultFechaInformada || todayStr;
                 v.change = Number((v.value - prev).toFixed(2));
-                v.changePercent = prev > 0 ? Number(((v.change / prev) * 100).toFixed(2)) : 0;
+                const isRate = (v.unit && (v.unit.includes('%') || v.unit.includes('tasa'))) || v.changeUnit === 'p.p.';
+                if (isRate) {
+                  v.changePercent = v.change;
+                  v.changeUnit = 'p.p.';
+                } else {
+                  v.changePercent = prev > 0 ? Number(((v.change / prev) * 100).toFixed(2)) : 0;
+                }
                 v.source = 'BCRA';
                 v.sourceUrl = 'https://www.bcra.gob.ar/apis-banco-central/';
                 v.comparisonLabel = 'vs. rueda anterior BCRA';

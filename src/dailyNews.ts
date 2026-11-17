@@ -194,6 +194,8 @@ export function getDailyNewsBriefing(
   const cameVar = getVar('ventas_minoristas_came');
   const ciaraVar = getVar('liquidacion_ciara_cec');
   const ripteVar = getVar('ripte_salario_estable');
+  const desempleoVar = getVar('tasa_desempleo_indec');
+  const pobrezaVar = getVar('tasa_pobreza_indec');
 
   // Valores base con fallbacks oficiales seguros
   const bnaVal = bnaBilleteVar?.value ?? 1560;
@@ -201,7 +203,7 @@ export function getDailyNewsBriefing(
   const blueVal = blueVar?.value ?? 1565;
   const mepVal = mepVar?.value ?? 1568.80;
   const cclVal = cclVar?.value ?? 1650.30;
-  const riesgoVal = riesgoVar?.value ?? 782;
+  const riesgoVal = riesgoVar?.value ?? 829;
   const ipcVal = ipcVar?.value ?? 1.9;
   const tnaPf = pfVar?.value ?? 19.25;
   const tnaBadlar = badlarVar?.value ?? 22.60;
@@ -209,7 +211,9 @@ export function getDailyNewsBriefing(
   const adefaVal = adefaVar?.value ?? 49.4;
   const cameVal = cameVar?.value ?? 2.9;
   const ciaraVal = ciaraVar?.value ?? 625;
-  const ripteVal = ripteVar?.value ?? 1045230;
+  const ripteVal = ripteVar?.value ?? 1045280;
+  const desempleoVal = desempleoVar?.value ?? 7.9;
+  const pobrezaVal = pobrezaVar?.value ?? 32.3;
 
   // --------------------------------------------------------------------------
   // CÁLCULO DE INSIGHT 1: Brechas Cambiarias y Costo de Canje Bursátil
@@ -227,7 +231,7 @@ export function getDailyNewsBriefing(
   // --------------------------------------------------------------------------
   // CÁLCULO DE INSIGHT 2: Riesgo País, Tendencia Histórica y Sobrecosto
   // --------------------------------------------------------------------------
-  const riesgoChange = riesgoVar?.change ?? -12;
+  const riesgoChange = riesgoVar?.change ?? -23;
   const sobrecostoAnual = (riesgoVal / 100).toFixed(2);
   let minRiesgo = riesgoVal;
   let maxRiesgo = riesgoVal;
@@ -277,7 +281,7 @@ export function getDailyNewsBriefing(
       highlightLabel: `EMBI+ JP Morgan (${riesgoChange > 0 ? '+' : ''}${riesgoChange} pb en la rueda)`,
       summary: `A partir de la serie telemétrica del riesgo país en la app: el indicador se sitúa en ${riesgoVal} pb, tras registrar una variación de ${riesgoChange > 0 ? '+' : ''}${riesgoChange} pb. En la serie histórica del período, el indicador ha oscilado entre un mínimo de ${minRiesgo} pb y un máximo de ${maxRiesgo} pb. El nivel actual equivale a un sobrecosto de endeudamiento del ${sobrecostoAnual}% anual sobre la tasa libre de riesgo de los Bonos del Tesoro de EE.UU.`,
       whyItMatters: 'La compresión del spread soberano mejora directamente la valuación de los activos argentinos y abarata las futuras emisiones de deuda para inversión privada.',
-      source: 'JP Morgan / BYMA / Serie de la App',
+      source: 'Bloomberg Línea / JP Morgan / Serie de la App',
       tag: 'argentina'
     },
     {
@@ -309,14 +313,14 @@ export function getDailyNewsBriefing(
     {
       id: 'insight-5-actividad-consumo-salarios',
       order: 5,
-      badge: 'Economía Real & Motores Productivos',
+      badge: 'Economía Real, Empleo & Social',
       emoji: '🏭',
-      title: `Producción fabril en ${adefaVal}k vehículos (ADEFA) y consumo comercial en ${cameVal > 0 ? '+' : ''}${cameVal}% (CAME)`,
-      highlightNumber: `${adefaVal}k unid`,
-      highlightLabel: `Fabricación ADEFA / Ventas CAME (${cameVal > 0 ? '+' : ''}${cameVal}%)`,
-      summary: `Sintetizando las variables productivas del tablero: la industria automotriz ensambló ${adefaVal} mil vehículos según ADEFA, mientras que el termómetro comercial de ventas minoristas pyme de CAME arrojó una variación de ${cameVal > 0 ? '+' : ''}${cameVal}% interanual. En el ámbito laboral, el salario formal promedio registrado (RIPTE) se ubica en $${ripteVal.toLocaleString('es-AR')}, definiendo la capacidad de compra de las familias frente al costo de los servicios y contratos indexados.`,
-      whyItMatters: 'El pulso combinado de la producción manufacturera y las ventas pyme confirma el ritmo de absorción de la economía real y la solidez de la actividad fabril.',
-      source: 'ADEFA / CAME / Secretaría de Trabajo (RIPTE)',
+      title: `Desocupación en ${desempleoVal.toFixed(1)}% y pobreza en ${pobrezaVal.toFixed(1)}% (INDEC), con industria en ${adefaVal}k vehículos`,
+      highlightNumber: `${desempleoVal.toFixed(1)}% / ${pobrezaVal.toFixed(1)}%`,
+      highlightLabel: `Desocupación 2T (${desempleoVal.toFixed(1)}%) y Pobreza 1S (${pobrezaVal.toFixed(1)}%) INDEC`,
+      summary: `Sintetizando las variables laborales, sociales y productivas del tablero: la EPH del INDEC marca una tasa de desocupación del ${desempleoVal.toFixed(1)}% (2.º trimestre de 2026) y una incidencia de la pobreza del ${pobrezaVal.toFixed(1)}% en personas (1.º semestre de 2026). En la economía real, la industria automotriz ensambló ${adefaVal} mil vehículos (ADEFA), las ventas minoristas pyme (CAME) variaron ${cameVal > 0 ? '+' : ''}${cameVal}% interanual y el salario formal promedio (RIPTE) se ubica en $${ripteVal.toLocaleString('es-AR')}.`,
+      whyItMatters: 'Cruzar el pulso fabril y comercial con las tasas de desempleo y pobreza del INDEC permite evaluar si la reactivación sectorial se traduce en empleo formal e ingresos reales.',
+      source: 'INDEC (EPH) / ADEFA / CAME / Sec. Trabajo',
       tag: 'argentina'
     }
   ];

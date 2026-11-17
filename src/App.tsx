@@ -20,7 +20,8 @@ import {
   X,
   SlidersHorizontal,
   BookOpen,
-  ChevronDown
+  ChevronDown,
+  Newspaper
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -312,6 +313,7 @@ export const SEMANTIC_PAIRS_AR: [string, string][] = [
   ['caucion_bursatil_byma', 'rendimiento_fci_money_market'], // Caución Bursátil y FCI
   ['emae_actividad_indec', 'produccion_automotriz_adefa'],   // EMAE y ADEFA
   ['demanda_electrica_cammesa', 'ventas_minoristas_came'],   // Electricidad y CAME
+  ['tasa_desempleo_indec', 'tasa_pobreza_indec'],      // Desocupación y Pobreza (INDEC EPH)
   ['ripte_salario_estable', 'indice_icl'],              // RIPTE y Coeficiente ICL
   ['creditos_hipotecarios_uva', 'stock_credito_privado'],// Créditos Hipotecarios UVA y Stock
   ['recaudacion_tributaria_arca', 'escrituras_caba'],   // Recaudación ARCA y Escrituras
@@ -746,6 +748,27 @@ export default function App() {
       return `${variable.value.toLocaleString(locale)} ${variable.unit.split('/')[0]}`;
     }
     return `${variable.value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${variable.unit}`;
+  };
+
+  const formatVariationBadge = (variable: Partial<EconomicVariable>, delta: number, deltaPct: number) => {
+    const unitStr = variable.unit || '';
+    const isRate = (unitStr.includes('%') || unitStr.includes('tasa') || unitStr.includes('porcentual')) || variable.changeUnit === 'p.p.';
+    const isPb = unitStr.toLowerCase().includes('pb') || variable.changeUnit === 'pb';
+
+    if (delta === 0) {
+      if (isRate) return '0,00 p.p.';
+      if (isPb) return '0 pb';
+      return '0,00%';
+    }
+
+    const sign = delta > 0 ? '+' : '';
+    if (isRate) {
+      return `${sign}${delta.toFixed(2)} p.p.`;
+    }
+    if (isPb) {
+      return `${sign}${Math.round(delta)} pb`;
+    }
+    return `${sign}${deltaPct.toFixed(2)}%`;
   };
 
   const calculateBankReturn = (tna: number, amount: number, days: number) => {
@@ -1206,11 +1229,11 @@ export default function App() {
             {/* Autonomous 5 News Button (Hidden on mobile to ensure spacious layout) */}
             <button
               onClick={() => setIsDailyNewsOpen(true)}
-              className="hidden md:flex h-8 px-2.5 sm:px-3 text-xs font-bold text-blue-950 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all items-center gap-1.5 shadow-2xs active:scale-95 group shrink-0 cursor-pointer"
-              title="5 cosas que la gente debería saber hoy (Argentina y el Mundo)"
+              className="hidden md:flex h-8 px-2.5 sm:px-3 text-xs font-semibold text-blue-900 bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200/80 rounded-lg transition-colors items-center gap-1.5 shrink-0 cursor-pointer"
+              title="5 Claves Económicas del Día"
             >
-              <span className="text-sm group-hover:scale-110 transition-transform">📰</span>
-              <span>5 Claves</span>
+              <Newspaper className="size-3.5 text-blue-700" />
+              <span className="font-editorial font-bold">5 Claves</span>
             </button>
 
             <button
@@ -1253,36 +1276,47 @@ export default function App() {
           </div>
         )}
 
-        {/* Banner Dinámico Principal: 5 Claves Económicas del Día (Se actualiza automáticamente cada día con variables en tiempo real) */}
-        <div
+        {/* Banner Dinámico Principal: Resumen minimalista con tipografía editorial y matices de color */}
+        <section
           onClick={() => setIsDailyNewsOpen(true)}
-          className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center justify-between gap-3 cursor-pointer hover:shadow-xs hover:border-blue-400/80 transition-all border border-blue-900/60 shadow-2xs group"
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsDailyNewsOpen(true);
+            }
+          }}
+          className="px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl bg-gradient-to-r from-white via-blue-50/45 to-indigo-50/45 border border-blue-200/80 hover:border-blue-300 text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 cursor-pointer transition-all shadow-2xs group"
           title="Abrir 5 Claves Económicas del Día"
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-sm shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-              📰
-            </span>
-            <div className="truncate min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs sm:text-sm font-bold text-white group-hover:text-blue-200 transition-colors">
-                  {dailyBriefing.title}
-                </span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/30 text-blue-200 border border-blue-400/30 font-bold uppercase shrink-0">
-                  {selectedCountry === 'BR' ? 'Hoje' : 'Hoy'}
-                </span>
-              </div>
-              <span className="text-[10px] sm:text-[11px] text-slate-300 block truncate mt-0.5">
-                {dailyBriefing.subtitle}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] sm:text-[11px] flex-wrap">
+              <span className="font-bold uppercase tracking-[0.08em] text-blue-700">
+                {selectedCountry === 'BR' ? '5 Chaves do Dia' : '5 Claves del Día'}
+              </span>
+              <span aria-hidden="true" className="text-slate-300">·</span>
+              <span className="text-slate-500 capitalize">
+                {formatFriendlyDate(dailyBriefing.lastUpdatedDate)}
               </span>
             </div>
+
+            <h2 className="font-editorial text-[15px] sm:text-lg font-bold text-slate-900 group-hover:text-blue-800 transition-colors leading-snug text-balance">
+              {dailyBriefing.items[0]?.title || dailyBriefing.title}
+            </h2>
+
+            <p className="text-[11px] sm:text-xs text-slate-600 truncate tabular-nums">
+              {dailyBriefing.subtitle}
+            </p>
           </div>
 
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shrink-0 shadow-2xs group-hover:bg-blue-400 group-hover:text-slate-950 transition-all">
-            <span>Leer</span>
-            <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+          <div className="flex items-center justify-end shrink-0">
+            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 group-hover:bg-blue-700 text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0">
+              <span>{selectedCountry === 'BR' ? 'Ler' : 'Leer'}</span>
+              <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </span>
           </div>
-        </div>
+        </section>
 
         {/* Mobile Tab Switcher */}
         <div className="md:hidden flex p-1 bg-slate-200/60 rounded-xl gap-1 text-xs font-medium overflow-x-auto scrollbar-none border border-slate-200/80">
@@ -1383,10 +1417,12 @@ export default function App() {
                                     delta > 0 ? 'text-emerald-700' : 'text-rose-700'
                                   }`}>
                                     {delta > 0 ? <ArrowUpRight className="size-2 mr-0.5" /> : <ArrowDownRight className="size-2 mr-0.5" />}
-                                    {delta > 0 ? '+' : ''}{deltaPct.toFixed(1)}%
+                                    {formatVariationBadge(variable, delta, deltaPct)}
                                   </span>
                                 ) : (
-                                  <span className="text-[9px] text-slate-400">0.0%</span>
+                                  <span className="text-[9px] text-slate-400">
+                                    {formatVariationBadge(variable, 0, 0)}
+                                  </span>
                                 )}
                                 {variable.comparisonLabel && (
                                   <span className="text-[8px] text-slate-400 truncate leading-none mt-0.5" title={variable.comparisonLabel}>
@@ -1467,10 +1503,12 @@ export default function App() {
                                   delta > 0 ? 'text-emerald-700' : 'text-rose-700'
                                 }`}>
                                   {delta > 0 ? <ArrowUpRight className="size-2.5 mr-0.5" /> : <ArrowDownRight className="size-2.5 mr-0.5" />}
-                                  {delta > 0 ? '+' : ''}{deltaPct.toFixed(2)}%
+                                  {formatVariationBadge(variable, delta, deltaPct)}
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-slate-400">0.00%</span>
+                                <span className="text-[10px] text-slate-400">
+                                  {formatVariationBadge(variable, 0, 0)}
+                                </span>
                               )}
                               {variable.comparisonLabel && (
                                 <span className="text-[8px] text-slate-400 leading-tight block">
@@ -1813,7 +1851,7 @@ export default function App() {
                 {/* Grid Visual de Otras Cotizaciones Clave en Argentina (Estilo Meta Cards) */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   {[
-                    { id: 'riesgo_pais_embi', label: 'Riesgo País', defaultVal: '782 pb' },
+                    { id: 'riesgo_pais_embi', label: 'Riesgo País', defaultVal: '829 pb' },
                     { id: 'dolar_mep_byma', label: 'Dólar MEP', defaultVal: '$1.568,80' },
                     { id: 'dolar_ccl_byma', label: 'Dólar CCL', defaultVal: '$1.650,30' },
                     { id: 'dolar_blue', label: 'Dólar Blue', defaultVal: '$1.565,00' },
@@ -1855,10 +1893,10 @@ export default function App() {
                             {dVal !== 0 ? (
                               <>
                                 {isPos ? <ArrowUpRight className="size-2.5 mr-0.5" /> : <ArrowDownRight className="size-2.5 mr-0.5" />}
-                                {isPos ? '+' : ''}{dPct.toFixed(2)}%
+                                {formatVariationBadge(targetVar || { unit: '' }, dVal, dPct)}
                               </>
                             ) : (
-                              '0.00%'
+                              formatVariationBadge(targetVar || { unit: '' }, 0, 0)
                             )}
                           </span>
                         </div>
@@ -2247,7 +2285,7 @@ export default function App() {
                               ? 'text-rose-700'
                               : 'text-slate-700'
                           }`}>
-                            {chartStats.nominalDiff > 0 ? '+' : ''}{chartStats.percentChange.toFixed(2)}%
+                            {formatVariationBadge(activeVar, chartStats.nominalDiff, chartStats.percentChange)}
                           </span>
                         </div>
                       </div>
@@ -2522,7 +2560,7 @@ export default function App() {
                         <strong className="text-slate-900">INDEC</strong>
                         <span className="text-[11px] text-blue-700">indec.gob.ar</span>
                       </div>
-                      <p className="text-slate-600 mt-1">IPC nacional, Canasta Básica Total, IPIM mayorista y actividad (EMAE).</p>
+                      <p className="text-slate-600 mt-1">IPC nacional, Canasta Básica Total, IPIM mayorista, actividad (EMAE), desocupación y pobreza (EPH).</p>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
@@ -2682,7 +2720,7 @@ export default function App() {
                     <div className="text-[10px] font-medium text-slate-500">📊 Var {chartRange}</div>
                     <div className="text-xs font-extrabold mt-0.5">
                       <span className={chartStats.nominalDiff > 0 ? 'text-emerald-700' : chartStats.nominalDiff < 0 ? 'text-rose-700' : 'text-slate-700'}>
-                        {chartStats.nominalDiff > 0 ? '+' : ''}{chartStats.percentChange.toFixed(2)}%
+                        {formatVariationBadge(activeVar, chartStats.nominalDiff, chartStats.percentChange)}
                       </span>
                     </div>
                   </div>

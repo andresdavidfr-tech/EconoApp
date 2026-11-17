@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Check, Copy, Newspaper, Calendar } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Check, Copy } from 'lucide-react';
 import { DailyBriefing, formatFriendlyDate } from '../dailyNews';
 
 interface DailyNewsModalProps {
@@ -8,21 +8,69 @@ interface DailyNewsModalProps {
   briefing: DailyBriefing;
 }
 
+const ITEM_ACCENTS = [
+  {
+    kicker: 'text-blue-700',
+    metric: 'text-blue-900',
+    wash: 'bg-blue-50/55',
+    indexBg: 'bg-blue-50 text-blue-700 border-blue-200/80'
+  },
+  {
+    kicker: 'text-indigo-700',
+    metric: 'text-indigo-900',
+    wash: 'bg-indigo-50/55',
+    indexBg: 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+  },
+  {
+    kicker: 'text-emerald-700',
+    metric: 'text-emerald-900',
+    wash: 'bg-emerald-50/55',
+    indexBg: 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+  },
+  {
+    kicker: 'text-sky-700',
+    metric: 'text-sky-900',
+    wash: 'bg-sky-50/55',
+    indexBg: 'bg-sky-50 text-sky-700 border-sky-200/80'
+  },
+  {
+    kicker: 'text-amber-700',
+    metric: 'text-amber-900',
+    wash: 'bg-amber-50/55',
+    indexBg: 'bg-amber-50 text-amber-800 border-amber-200/80'
+  }
+];
+
 export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProps) {
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
+  const isBrazil = briefing.country === 'BR';
+  const headerTitle = isBrazil ? '5 Chaves Econômicas do Dia' : '5 Claves Económicas del Día';
+
   const handleCopy = () => {
-    const textToCopy = `${briefing.title}\n${briefing.subtitle}\n\n` +
-      `Fecha: ${formatFriendlyDate(briefing.lastUpdatedDate)}\n\n` +
-      briefing.items.map(item => (
-        `#${item.order} ${item.emoji} ${item.title}\n` +
-        `Dato: ${item.highlightNumber} (${item.highlightLabel})\n` +
-        `${item.summary}\n` +
-        `Fuente: ${item.source}\n`
-      )).join('\n---\n\n') +
-      `\nEconoapp`;
+    const textToCopy =
+      `${headerTitle}\n` +
+      `${formatFriendlyDate(briefing.lastUpdatedDate)}\n\n` +
+      briefing.items
+        .map(
+          item =>
+            `${item.order}. ${item.title}\n` +
+            `${item.highlightNumber} · ${item.summary}\n` +
+            `Fuente: ${item.source}`
+        )
+        .join('\n\n') +
+      `\n\nEconoapp`;
 
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
@@ -30,132 +78,105 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl border border-slate-200/90 w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        
-        {/* Header Banner */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white shrink-0 relative overflow-hidden">
-          <div className="absolute -right-8 -top-8 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
-          
-          <div className="flex items-center justify-between gap-3 relative z-10">
-            <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-blue-600/30 border border-blue-400/40 text-blue-300 flex items-center justify-center shrink-0">
-                <Newspaper className="size-4" />
-              </span>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-200 border border-blue-400/30 flex items-center gap-1.5 capitalize">
-                    <Calendar className="size-3 text-blue-300" />
-                    {formatFriendlyDate(briefing.lastUpdatedDate)}
-                  </span>
-                  <span className="text-[10px] text-slate-300">
-                    ⏱️ ~{briefing.readingTimeMinutes} min de lectura
-                  </span>
-                </div>
-                <h3 className="text-base sm:text-lg font-bold tracking-tight text-white mt-1">
-                  {briefing.title}
-                </h3>
-              </div>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-colors"
-              title="Cerrar"
-            >
-              <X className="size-4" />
-            </button>
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-[2px] flex items-center justify-center p-2.5 sm:p-5 animate-in fade-in duration-150"
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={headerTitle}
+        className="bg-white text-slate-900 border border-slate-200/90 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150"
+      >
+        {/* Encabezado limpio con matiz azul editorial */}
+        <header className="px-5 sm:px-7 py-4 bg-gradient-to-r from-slate-50 via-blue-50/70 to-indigo-50/50 border-b border-slate-200/80 flex items-start justify-between gap-4 shrink-0">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-blue-700 capitalize">
+              {formatFriendlyDate(briefing.lastUpdatedDate)}
+            </p>
+            <h2 className="font-editorial text-xl sm:text-2xl font-bold text-slate-900 leading-tight mt-0.5 text-balance">
+              {headerTitle}
+            </h2>
           </div>
 
-          <p className="text-xs text-slate-300 mt-2 relative z-10 leading-relaxed max-w-xl">
-            {briefing.subtitle}
-          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar noticias"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-white/80 transition-colors cursor-pointer shrink-0"
+            title="Cerrar"
+          >
+            <X className="size-4" />
+          </button>
+        </header>
 
-          {/* Official Source Strip */}
-          <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2 text-[11px] text-blue-200/90 relative z-10 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-white">Fuentes oficiales primarias:</span>
-              <span className="text-blue-200">BCRA · INDEC · BNA · BYMA · JP Morgan · YPF / SEC · FMI</span>
-            </div>
-          </div>
-        </div>
+        {/* Lista única minimalista de las 5 noticias */}
+        <div className="flex-1 overflow-y-auto px-5 sm:px-7 py-2 divide-y divide-slate-200/70 bg-white">
+          {briefing.items.map((item, idx) => {
+            const theme = ITEM_ACCENTS[idx % ITEM_ACCENTS.length];
+            return (
+              <article key={item.id} className="py-5 first:pt-4 last:pb-5">
+                <div className="flex items-start gap-3.5">
+                  <span
+                    className={`w-7 h-7 rounded-lg border text-xs font-bold tabular-nums flex items-center justify-center shrink-0 mt-0.5 ${theme.indexBg}`}
+                  >
+                    {item.order}
+                  </span>
 
-        {/* Scrollable Content: 5 Essential Things */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 divide-y divide-slate-100">
-          {briefing.items.map((item, idx) => (
-            <div key={item.id} className={idx > 0 ? 'pt-3.5' : ''}>
-              <div className="flex items-start gap-3">
-                {/* Order Circle Badge */}
-                <div className="w-7 h-7 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-extrabold text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                  {item.order}
-                </div>
-
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  {/* Category Pill & Key Metric Highlight */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs">{item.emoji}</span>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                      <span className={`text-[11px] font-bold uppercase tracking-wider ${theme.kicker}`}>
                         {item.badge}
                       </span>
-                    </div>
-
-                    <div className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-xs font-black text-slate-900 tabular-nums flex items-center gap-1 shadow-2xs">
-                      <span>{item.highlightNumber}</span>
-                      <span className="text-[10px] font-normal text-slate-500">
-                        · {item.highlightLabel}
+                      <span className={`text-sm font-extrabold tabular-nums shrink-0 ${theme.metric}`}>
+                        {item.highlightNumber}
                       </span>
                     </div>
-                  </div>
 
-                  {/* Headline */}
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-950 leading-snug">
-                    {item.title}
-                  </h4>
+                    <h3 className="font-editorial text-lg sm:text-[21px] font-bold text-slate-900 leading-snug mt-1 text-balance">
+                      {item.title}
+                    </h3>
 
-                  {/* Clean Synthesis Body */}
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {item.summary}
-                  </p>
+                    <p className="font-editorial-prose text-[15px] leading-relaxed text-slate-700 mt-2">
+                      {item.summary}
+                    </p>
 
-                  {/* Insight derivado de los datos */}
-                  {item.whyItMatters && (
-                    <div className="bg-blue-50/60 border border-blue-200/70 rounded-xl p-2.5 text-[11px] text-slate-800 flex items-start gap-2 shadow-2xs">
-                      <span className="text-xs shrink-0">💡</span>
-                      <div>
-                        <strong className="text-blue-950 font-bold block mb-0.5">Insight de los datos:</strong>
-                        <span className="leading-relaxed text-slate-700">{item.whyItMatters}</span>
-                      </div>
-                    </div>
-                  )}
+                    {item.whyItMatters && (
+                      <p className={`mt-2.5 px-3 py-2 rounded-lg text-[12.5px] leading-relaxed text-slate-700 ${theme.wash}`}>
+                        <strong className={`font-semibold ${theme.kicker}`}>
+                          {isBrazil ? 'Leitura: ' : 'Clave: '}
+                        </strong>
+                        {item.whyItMatters}
+                      </p>
+                    )}
 
-                  {/* Source Footer */}
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
-                    <span>Fuente: <strong className="text-slate-700 font-semibold">{item.source}</strong></span>
+                    <p className="text-[11px] text-slate-500 mt-2">
+                      Fuente: {item.source}
+                    </p>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </article>
+            );
+          })}
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200/90 flex items-center justify-between gap-2 shrink-0">
+        {/* Pie minimalista */}
+        <footer className="px-5 sm:px-7 py-3 bg-slate-50/90 border-t border-slate-200/80 flex items-center justify-between gap-3 shrink-0">
           <button
             type="button"
             onClick={handleCopy}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
-            title="Copiar las 5 noticias completas al portapapeles"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
           >
             {copied ? (
               <>
                 <Check className="size-3.5 text-emerald-600" />
-                <span className="text-emerald-700 font-bold">¡Copiado!</span>
+                <span className="text-emerald-700">Copiado</span>
               </>
             ) : (
               <>
                 <Copy className="size-3.5 text-slate-500" />
-                <span>Copiar 5 Claves</span>
+                <span>Copiar</span>
               </>
             )}
           </button>
@@ -163,11 +184,11 @@ export function DailyNewsModal({ isOpen, onClose, briefing }: DailyNewsModalProp
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors shadow-2xs cursor-pointer"
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors cursor-pointer whitespace-nowrap"
           >
-            Entendido
+            Cerrar
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );

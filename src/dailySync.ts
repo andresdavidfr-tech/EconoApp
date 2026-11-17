@@ -43,6 +43,24 @@ function addDays(dateStr: string, days: number): string {
 }
 
 /**
+ * Determina si la unidad corresponde a una tasa o porcentaje
+ */
+export function isRateOrPercentageUnit(unit?: string): boolean {
+  if (!unit) return false;
+  const u = unit.toLowerCase();
+  return u.includes('%') || u.includes('porcentual') || u.includes('tasa');
+}
+
+/**
+ * Determina si la unidad corresponde a puntos básicos (pb)
+ */
+export function isBasisPointsUnit(unit?: string): boolean {
+  if (!unit) return false;
+  const u = unit.toLowerCase();
+  return u.includes('pb') || u.includes('puntos básicos') || u.includes('puntos basicos');
+}
+
+/**
  * Ensures variables stay referenced to the official current date and maintain up-to-date timelines.
  */
 export function syncVariablesToCurrentDate(variables: EconomicVariable[], targetDate?: string): {
@@ -87,7 +105,6 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
       } else {
         historyCopy.push({ date: todayStr, value: currentValue });
       }
-
       const trimmedHistory = historyCopy.slice(-1200);
 
       // Calcular cambio diario estrictamente contra la rueda / publicación anterior
@@ -95,11 +112,29 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
       let changePercent = variable.changePercent;
       let prevValue: number | undefined = variable.prevPublishedValue;
 
+      const isRate = isRateOrPercentageUnit(variable.unit);
+      const isPb = isBasisPointsUnit(variable.unit);
+      const changeUnit: 'p.p.' | 'pb' | '%' = isRate ? 'p.p.' : isPb ? 'pb' : '%';
+
       if (trimmedHistory.length >= 2) {
-        // El dato anterior es el penúltimo punto de la serie
-        prevValue = trimmedHistory[trimmedHistory.length - 2].value;
-        change = Number((currentValue - prevValue).toFixed(2));
-        changePercent = prevValue !== 0 ? Number(((change / prevValue) * 100).toFixed(2)) : 0;
+        const penult = trimmedHistory[trimmedHistory.length - 2].value;
+        if (penult !== currentValue || variable.prevPublishedValue === undefined) {
+          prevValue = penult;
+          change = Number((currentValue - prevValue).toFixed(2));
+        } else {
+          prevValue = variable.prevPublishedValue;
+          change = variable.change !== undefined ? variable.change : 0;
+        }
+
+        if (isRate) {
+          // Para tasas o inflación, el cambio se expresa en puntos porcentuales (p.p.)
+          changePercent = change;
+        } else if (isPb) {
+          // Para riesgo país, el cambio se expresa en puntos básicos (pb)
+          changePercent = change;
+        } else {
+          changePercent = prevValue !== 0 ? Number(((change / prevValue) * 100).toFixed(2)) : 0;
+        }
       }
 
       const compLabel = variable.source.toUpperCase().includes('BCRA')
@@ -111,6 +146,7 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
         value: currentValue,
         change: change !== undefined ? change : 0,
         changePercent: changePercent !== undefined ? changePercent : 0,
+        changeUnit,
         comparisonLabel: compLabel,
         prevPublishedValue: prevValue,
         lastUpdated: todayStr,
@@ -131,15 +167,28 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
       let changePercent = variable.changePercent;
       let prevValue: number | undefined = variable.prevPublishedValue;
 
+      const isRate = isRateOrPercentageUnit(variable.unit);
+      const isPb = isBasisPointsUnit(variable.unit);
+      const changeUnit: 'p.p.' | 'pb' | '%' = isRate ? 'p.p.' : isPb ? 'pb' : '%';
+
       if (historyCopy.length >= 2) {
         prevValue = historyCopy[historyCopy.length - 2].value;
         change = Number((currentValue - prevValue).toFixed(2));
-        changePercent = prevValue !== 0 ? Number(((change / prevValue) * 100).toFixed(2)) : 0;
+        if (isRate) {
+          // Para inflación (IPC/IPIM/Construcción) y tasas, la variación m/m es la diferencia en p.p.
+          changePercent = change;
+        } else if (isPb) {
+          changePercent = change;
+        } else {
+          changePercent = prevValue !== 0 ? Number(((change / prevValue) * 100).toFixed(2)) : 0;
+        }
       }
 
       const compLabel = variable.frequency === 'Mensual'
         ? 'vs. mes anterior (m/m)'
-        : 'vs. período anterior (t/t)';
+        : variable.frequency === 'Semestral'
+        ? 'vs. semestre anterior (s/s)'
+        : 'vs. trimestre anterior (t/t)';
 
       if (variable.lastUpdated !== todayStr) {
         updatedCount++;
@@ -149,6 +198,7 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
         value: currentValue,
         change: change !== undefined ? change : 0,
         changePercent: changePercent !== undefined ? changePercent : 0,
+        changeUnit,
         comparisonLabel: compLabel,
         prevPublishedValue: prevValue,
         lastUpdated: todayStr,

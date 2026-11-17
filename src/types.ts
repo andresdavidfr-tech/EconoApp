@@ -49,14 +49,15 @@ export interface EconomicVariable {
   country?: CountryCode;
   value: number;
   unit: string; // e.g. "%", "ARS", "BRL", "USD (M)", "Índice"
-  frequency: 'Diaria' | 'Mensual' | 'Trimestral';
+  frequency: 'Diaria' | 'Mensual' | 'Trimestral' | 'Semestral';
   source: string; // e.g. "BCRA", "INDEC", "BCB", "IBGE", "B3", "FGV"
   sourceUrl: string;
   description: string;
   lastUpdated: string; // YYYY-MM-DD (fecha real del dato)
   history: HistoricalDataPoint[];
   change?: number;      // Variación nominal con respecto al dato previo
-  changePercent?: number; // Variación porcentual con respecto al dato previo
+  changePercent?: number; // Variación porcentual o en puntos con respecto al dato previo
+  changeUnit?: 'p.p.' | 'pb' | '%' | 'pts'; // Unidad de variación (p.p. para tasas/inflación, pb para riesgo país, % para monedas y montos)
   comparisonLabel?: string; // Etiqueta explícita de comparación (ej: "vs. rueda anterior", "vs. mes anterior (m/m)")
   prevPublishedValue?: number; // Cifra oficial anterior exacta
   live?: boolean;       // true si el valor viene de una fuente consultada en vivo

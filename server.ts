@@ -148,11 +148,278 @@ async function syncExternalDollarRates() {
             }
           }
         }
+
+        // Garantizar coherencia matemática estricta del Dólar Tarjeta (+30% sobre oficial minorista BNA)
+        const bnaVar = variablesStore.find(x => x.id === "bna_dolar_billete");
+        const tarjetaVar = variablesStore.find(x => x.id === "dolar_tarjeta");
+        if (bnaVar && tarjetaVar) {
+          const expectedVenta = Number((bnaVar.value * 1.30).toFixed(2));
+          const prevBna = bnaVar.prevPublishedValue || (bnaVar.value - bnaVar.change);
+          const expectedPrev = Number((prevBna * 1.30).toFixed(2));
+          tarjetaVar.value = expectedVenta;
+          tarjetaVar.prevPublishedValue = expectedPrev;
+          tarjetaVar.change = Number((expectedVenta - expectedPrev).toFixed(2));
+          tarjetaVar.changePercent = bnaVar.changePercent;
+          tarjetaVar.lastUpdated = bnaVar.lastUpdated;
+          tarjetaVar.comparisonLabel = bnaVar.comparisonLabel;
+          tarjetaVar.description = `Tipo de cambio para consumos en moneda extranjera con tarjeta en el exterior (alícuota 30% sobre minorista BNA: $${bnaVar.value.toFixed(2)} × 1,30 = $${expectedVenta.toFixed(2)}).`;
+        }
+
         console.log("[Auto-Sync] Cotizaciones del dólar actualizadas en tiempo real con DolarApi al día", today);
       }
     }
   } catch (err) {
     console.warn("[Auto-Sync] No se pudo obtener cotizaciones online de DolarApi, utilizando valores calibrados de contingencia:", err);
+  }
+}
+
+interface BloombergRiesgoInfo {
+  headline?: string;
+  articleUrl?: string;
+  articleDate?: string;
+  spotValue?: number;
+  spotDate?: string;
+}
+
+/**
+ * Consulta Bloomberg Línea Argentina (https://www.bloomberglinea.com/latinoamerica/argentina/)
+ * para extraer el contexto más reciente de Riesgo País y cualquier cotización puntual publicada.
+ */
+async function fetchBloombergLineaRiesgo(): Promise<BloombergRiesgoInfo> {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/html"
+  };
+
+  let elements: Array<any> = [];
+  try {
+    const query = encodeURIComponent(JSON.stringify({
+      "arc-site": "bloomberglinea",
+      feedOffset: 0,
+      feedSize: 25,
+      includeSections: "/latinoamerica/argentina"
+    }));
+    const res = await fetch(
+      `https://www.bloomberglinea.com/pf/api/v3/content/fetch/story-feed-sections?query=${query}`,
+      { headers, signal: AbortSignal.timeout(8000) }
+    );
+    if (res.ok) {
+      const json = await res.json();
+      if (Array.isArray(json?.content_elements)) {
+        elements = json.content_elements;
+      }
+    }
+  } catch {}
+
+  // Respaldo: parsear el HTML público de https://www.bloomberglinea.com/latinoamerica/argentina/
+  if (elements.length === 0) {
+    try {
+      const htmlRes = await fetch("https://www.bloomberglinea.com/latinoamerica/argentina/", {
+        headers,
+        signal: AbortSignal.timeout(8000)
+      });
+      if (htmlRes.ok) {
+        const html = await htmlRes.text();
+        const cacheMatch = html.match(/Fusion\.contentCache=(\{.*?\});Fusion\.layout/);
+        if (cacheMatch) {
+          const cache = JSON.parse(cacheMatch[1]);
+          const feedObj = cache["story-feed-sections"] || {};
+          const firstKey = Object.keys(feedObj)[0];
+          if (firstKey && Array.isArray(feedObj[firstKey]?.data?.content_elements)) {
+            elements = feedObj[firstKey].data.content_elements;
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const info: BloombergRiesgoInfo = {};
+  const sortedElements = [...elements].sort((a, b) => {
+    const aHead = `${a?.headlines?.basic || ""} ${a?.subheadlines?.basic || ""}`;
+    const bHead = `${b?.headlines?.basic || ""} ${b?.subheadlines?.basic || ""}`;
+    const aMatch = /riesgo\s+pa[ií]s|embi/i.test(aHead) ? 1 : 0;
+    const bMatch = /riesgo\s+pa[ií]s|embi/i.test(bHead) ? 1 : 0;
+    return bMatch - aMatch;
+  });
+
+  for (const el of sortedElements) {
+    const headline: string = el?.headlines?.basic || "";
+    const subheadline: string = el?.subheadlines?.basic || "";
+    const canonicalUrl: string = el?.canonical_url || "";
+    const displayDate: string = (el?.display_date || "").slice(0, 10);
+    const bodyText = Array.isArray(el?.content_elements)
+      ? el.content_elements
+          .filter((c: any) => c?.type === "text" && typeof c?.content === "string")
+          .map((c: any) => c.content.replace(/<[^>]+>/g, " "))
+          .join(" ")
+      : "";
+
+    const combined = `${headline} ${subheadline} ${bodyText}`;
+    if (!/riesgo\s+pa[ií]s|embi/i.test(combined)) continue;
+
+    if (!info.headline && headline) {
+      info.headline = headline;
+      info.articleUrl = canonicalUrl ? `https://www.bloomberglinea.com${canonicalUrl}` : "https://www.bloomberglinea.com/latinoamerica/argentina/";
+      info.articleDate = displayDate || undefined;
+    }
+
+    // Buscar menciones explícitas de cierre/nivel puntual (evitando rangos como "entre 700 y 900" o mínimos históricos)
+    const spotPatterns = [
+      /riesgo\s+pa[ií]s[^.]{0,120}?(?:cerr[oó]|se\s+ubic[oó]|cotiza(?:ba)?|oper[oó]|lleg[oó]|pas[oó][^.]{0,60}?a|situarse)\s+en\s+(\d{3,4})\s*(?:puntos|pb|unidades)/i,
+      /riesgo\s+pa[ií]s[^.]{0,120}?\ba\s+(\d{3,4})\s*(?:puntos|pb|unidades)\s+(?:este|hoy|el|tras)/i,
+      /embi[^.]{0,80}?(?:en|a)\s+(\d{3,4})\s*(?:puntos|pb|unidades)/i
+    ];
+    for (const pat of spotPatterns) {
+      const m = combined.match(pat);
+      if (m) {
+        const val = parseInt(m[1], 10);
+        if (val >= 250 && val <= 4000) {
+          info.spotValue = val;
+          info.spotDate = displayDate || undefined;
+          break;
+        }
+      }
+    }
+    if (info.spotValue && info.headline) break;
+  }
+
+  return info;
+}
+
+interface UnifiedRiesgoResult {
+  valor: number;
+  prevValor: number;
+  change: number;
+  fecha: string;
+  source: string;
+  sourceUrl: string;
+  bloombergHeadline?: string;
+  bloombergUrl?: string;
+  history: Array<{ date: string; value: number }>;
+}
+
+let riesgoCache: { data: UnifiedRiesgoResult; timestamp: number } | null = null;
+const RIESGO_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function fetchLiveRiesgoPaisData(): Promise<UnifiedRiesgoResult | null> {
+  const now = Date.now();
+  if (riesgoCache && now - riesgoCache.timestamp < RIESGO_CACHE_TTL_MS) {
+    return riesgoCache.data;
+  }
+
+  const [bloombergRes, seriesRes, spotRes] = await Promise.allSettled([
+    fetchBloombergLineaRiesgo(),
+    fetch("https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais", {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(7000)
+    }),
+    fetch("https://mercados.ambito.com/riesgopais/variacion", {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(6000)
+    })
+  ]);
+
+  const bloomberg: BloombergRiesgoInfo =
+    bloombergRes.status === "fulfilled" ? bloombergRes.value : {};
+
+  let history: Array<{ date: string; value: number }> = [];
+  if (seriesRes.status === "fulfilled" && seriesRes.value.ok) {
+    try {
+      const raw = (await seriesRes.value.json()) as Array<{ fecha: string; valor: number }>;
+      if (Array.isArray(raw)) {
+        history = raw
+          .filter(pt => pt?.fecha && typeof pt?.valor === "number" && pt.valor > 0)
+          .slice(-180)
+          .map(pt => ({ date: pt.fecha, value: Math.round(pt.valor) }));
+      }
+    } catch {}
+  }
+
+  let spotVal: number | null = null;
+  let spotDate: string | null = null;
+  if (spotRes.status === "fulfilled" && spotRes.value.ok) {
+    try {
+      const rawSpot = (await spotRes.value.json()) as { ultimo?: string; fecha?: string };
+      const parsedVal = rawSpot?.ultimo ? parseInt(String(rawSpot.ultimo).replace(/[^\d]/g, ""), 10) : NaN;
+      if (!isNaN(parsedVal) && parsedVal > 0) {
+        spotVal = parsedVal;
+      }
+      if (rawSpot?.fecha && /^\d{2}-\d{2}-\d{4}$/.test(rawSpot.fecha)) {
+        const [dd, mm, yyyy] = rawSpot.fecha.split("-");
+        spotDate = `${yyyy}-${mm}-${dd}`;
+      }
+    } catch {}
+  }
+
+  // Integrar punto spot más reciente en la serie diaria
+  if (spotVal && spotDate) {
+    if (history.length === 0 || history[history.length - 1].date < spotDate) {
+      history.push({ date: spotDate, value: spotVal });
+    } else if (history[history.length - 1].date === spotDate) {
+      history[history.length - 1].value = spotVal;
+    }
+  }
+
+  // Si Bloomberg Línea reporta un dato puntual con fecha igual o posterior al último cierre de la serie, incorporarlo
+  if (bloomberg.spotValue && bloomberg.spotDate) {
+    const lastSeriesDate = history.length > 0 ? history[history.length - 1].date : "";
+    if (!lastSeriesDate || bloomberg.spotDate > lastSeriesDate) {
+      history.push({ date: bloomberg.spotDate, value: bloomberg.spotValue });
+    } else if (bloomberg.spotDate === lastSeriesDate && !spotVal) {
+      history[history.length - 1].value = bloomberg.spotValue;
+    }
+  }
+
+  if (history.length === 0) return null;
+
+  const latest = history[history.length - 1];
+  const prev = history.length >= 2 ? history[history.length - 2] : latest;
+  const change = latest.value - prev.value;
+
+  const result: UnifiedRiesgoResult = {
+    valor: latest.value,
+    prevValor: prev.value,
+    change,
+    fecha: latest.date,
+    source: "Bloomberg Línea / JP Morgan",
+    sourceUrl: "https://www.bloomberglinea.com/latinoamerica/argentina/",
+    bloombergHeadline: bloomberg.headline,
+    bloombergUrl: bloomberg.articleUrl || "https://www.bloomberglinea.com/latinoamerica/argentina/",
+    history
+  };
+
+  riesgoCache = { data: result, timestamp: now };
+  return result;
+}
+
+/**
+ * Relevamiento en tiempo real del Riesgo País (EMBI+ Argentina JP Morgan) integrado con Bloomberg Línea Argentina
+ */
+async function syncExternalRiesgoPais() {
+  try {
+    const live = await fetchLiveRiesgoPaisData();
+    const v = variablesStore.find(x => x.id === "riesgo_pais_embi");
+    if (v && live) {
+      v.value = live.valor;
+      v.lastUpdated = live.fecha;
+      v.prevPublishedValue = live.prevValor;
+      v.change = live.change;
+      v.changePercent = live.change;
+      v.changeUnit = "pb";
+      v.source = live.source;
+      v.sourceUrl = live.sourceUrl;
+      v.comparisonLabel = "vs. cierre anterior JP Morgan";
+      const bloombergNote = live.bloombergHeadline
+        ? ` Cobertura Bloomberg Línea: "${live.bloombergHeadline}".`
+        : "";
+      v.description = `Diferencial de rendimiento entre bonos soberanos emitidos por Argentina y los títulos del Tesoro de EE.UU. (EMBI+ JP Morgan) seguido vía Bloomberg Línea Argentina (${live.valor} pb al ${live.fecha}).${bloombergNote}`;
+      if (live.history.length > 0) {
+        v.history = live.history;
+      }
+      console.log(`[Auto-Sync] Riesgo País actualizado (Bloomberg Línea / EMBI+): ${live.valor} pb (${live.change >= 0 ? "+" : ""}${live.change} pb) al ${live.fecha}`);
+    }
+  } catch (err) {
+    console.warn("[Auto-Sync] No se pudo obtener Riesgo País en línea, manteniendo referencia calibrada:", err);
   }
 }
 
@@ -173,6 +440,14 @@ async function syncExternalInflation() {
           v.fetchedAt = new Date().toISOString();
           const today = getArgentinaTodayDate();
           v.lastUpdated = today;
+
+          if (data.length >= 2) {
+            const prev = data[data.length - 2];
+            v.prevPublishedValue = prev.valor;
+            v.change = Number((latest.valor - prev.valor).toFixed(2));
+            v.changePercent = v.change;
+            v.changeUnit = 'p.p.';
+          }
 
           // Obtener inflación interanual
           let interanualStr = "33,4%";
@@ -595,9 +870,10 @@ function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
   const result = syncVariablesToCurrentDate(variablesStore);
   variablesStore = result.updatedVariables;
   lastSyncTimestamp = new Date().toISOString();
-  // Sincronizar cotizaciones, API BCRA, inflación y tasas online en segundo plano
+  // Sincronizar cotizaciones, API BCRA, Riesgo País, inflación y tasas online en segundo plano
   syncBCRAOfficialVariables().catch(() => {});
   syncExternalDollarRates().catch(() => {});
+  syncExternalRiesgoPais().catch(() => {});
   syncExternalInflation().catch(() => {});
   syncExternalPlazoFijoRates().catch(() => {});
   if (result.updatedCount > 0) {
@@ -609,6 +885,7 @@ function runDailyAutoSync(): { updatedCount: number; syncDate: string } {
 // Initial sync at module load
 runDailyAutoSync();
 syncExternalDollarRates().catch(() => {});
+syncExternalRiesgoPais().catch(() => {});
 syncExternalInflation().catch(() => {});
 syncExternalPlazoFijoRates().catch(() => {});
 
@@ -618,6 +895,7 @@ setInterval(() => {
   try {
     const res = runDailyAutoSync();
     syncExternalDollarRates().catch(() => {});
+    syncExternalRiesgoPais().catch(() => {});
     syncExternalInflation().catch(() => {});
     syncExternalPlazoFijoRates().catch(() => {});
     console.log(`[Auto-Sync 5min] Revisión periódica en segundo plano (${new Date().toLocaleTimeString()}): ${res.updatedCount} actualizadas al día ${res.syncDate}.`);
@@ -660,6 +938,7 @@ async function execute0500AMDailyNewsCycle() {
   await Promise.allSettled([
     syncBCRAOfficialVariables(),
     syncExternalDollarRates(),
+    syncExternalRiesgoPais(),
     syncExternalInflation(),
     syncExternalPlazoFijoRates()
   ]);
@@ -772,6 +1051,7 @@ async function startServer() {
     await Promise.allSettled([
       syncBCRAOfficialVariables(),
       syncExternalDollarRates(),
+      syncExternalRiesgoPais(),
       syncExternalInflation(),
       syncExternalPlazoFijoRates()
     ]);
@@ -820,6 +1100,34 @@ async function startServer() {
     } catch (err: any) {
       res.status(502).json({ error: `No se pudo obtener la serie para la variable ${id} del BCRA`, details: err?.message });
     }
+  });
+
+  // API 1f: Proxy de Riesgo País Argentina (Bloomberg Línea / EMBI+ JP Morgan)
+  app.get("/api/riesgo-pais", async (req, res) => {
+    try {
+      const live = await fetchLiveRiesgoPaisData();
+      if (live) {
+        return res.json({
+          valor: live.valor,
+          prevValor: live.prevValor,
+          change: live.change,
+          fecha: live.fecha,
+          source: live.source,
+          sourceUrl: live.sourceUrl,
+          bloombergHeadline: live.bloombergHeadline,
+          bloombergUrl: live.bloombergUrl
+        });
+      }
+    } catch {}
+    const v = variablesStore.find(x => x.id === "riesgo_pais_embi");
+    res.json({
+      valor: v?.value || 829,
+      prevValor: v?.prevPublishedValue || 852,
+      change: v?.change ?? -23,
+      fecha: v?.lastUpdated || "2026-11-12",
+      source: "Bloomberg Línea / JP Morgan",
+      sourceUrl: "https://www.bloomberglinea.com/latinoamerica/argentina/"
+    });
   });
 
   // API 1d: List comparative electronic personal fixed-term deposit rates of main banks
