@@ -54,6 +54,7 @@ import { TopicTechVisualizer } from './components/TopicTechVisualizer';
 import { MetaIcon } from './MetaIcon';
 import { getDailyNewsBriefing, formatFriendlyDate } from './dailyNews';
 import { DailyNewsModal } from './components/DailyNewsModal';
+import { BankLogo } from './components/BankLogo';
 import {
   convertVariableToUsd,
   isVariableEligibleForUsdConversion,
@@ -466,7 +467,11 @@ function ChartScaleControls({
 }
 
 /** Indica si el valor se consultó recientemente a una fuente o es un valor de referencia. */
-function freshnessInfo(v: { fetchedAt?: string }): { text: string; live: boolean } {
+function freshnessInfo(v: { id?: string; fetchedAt?: string; lastUpdated?: string }): { text: string; live: boolean } {
+  if (v.id === 'riesgo_pais_embi') {
+    const fecha = v.lastUpdated ? ` (${v.lastUpdated})` : '';
+    return { text: `Cierre diario oficial J.P. Morgan${fecha} · 1 vez por jornada`, live: Boolean(v.fetchedAt) };
+  }
   const t = v.fetchedAt ? Date.parse(v.fetchedAt) : NaN;
   if (Number.isFinite(t)) {
     const mins = Math.round((Date.now() - t) / 60000);
@@ -2060,9 +2065,9 @@ export default function App() {
                 return (
                   <div className="mt-4 pt-4 border-t border-blue-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-200/80">
-                      <span className="text-xs text-blue-900/80 flex items-center gap-1">
-                        <span>🏆</span>
-                        <span>Mayor tasa: {topBank.shortName} ({topBank.tna.toFixed(2)}%)</span>
+                      <span className="text-xs text-blue-900/80 flex items-center gap-1.5">
+                        <BankLogo bankId={topBank.id} bankName={topBank.bankName} size="xs" />
+                        <span className="truncate">Mayor tasa: {topBank.shortName} ({topBank.tna.toFixed(2)}%)</span>
                       </span>
                       <span className="text-xl font-bold tabular-nums text-emerald-700 block mt-1">
                         +{formatArs(topGain.interest)}
@@ -2073,9 +2078,9 @@ export default function App() {
                     </div>
 
                     <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80">
-                      <span className="text-xs text-slate-700 flex items-center gap-1">
-                        <span>🏛️</span>
-                        <span>{selectedCountry === 'BR' ? 'Banco Público' : 'Banco Nación: BNA'} ({bnaBank.tna.toFixed(2)}%)</span>
+                      <span className="text-xs text-slate-700 flex items-center gap-1.5">
+                        <BankLogo bankId={bnaBank.id} bankName={bnaBank.bankName} size="xs" />
+                        <span className="truncate">{selectedCountry === 'BR' ? bnaBank.shortName : 'Banco Nación: BNA'} ({bnaBank.tna.toFixed(2)}%)</span>
                       </span>
                       <span className="text-xl font-bold tabular-nums text-slate-950 block mt-1">
                         +{formatArs(bnaGain.interest)}
@@ -2170,12 +2175,13 @@ export default function App() {
                         )}
                       </div>
 
-                      <h3 className="text-sm font-bold text-slate-950 truncate mt-0.5">
-                        {bank.bankName}
-                        {isBNA && <span className="ml-1.5 text-xs text-blue-800 font-normal">(Oficial BNA)</span>}
+                      <h3 className="text-sm font-bold text-slate-950 flex items-center gap-2 mt-1 min-w-0">
+                        <BankLogo bankId={bank.id} bankName={bank.bankName} size="sm" />
+                        <span className="truncate">{bank.bankName}</span>
+                        {isBNA && <span className="text-xs text-blue-800 font-normal shrink-0">(Oficial BNA)</span>}
                       </h3>
 
-                      <span className="text-xs text-slate-500 block mt-0.5">
+                      <span className="text-xs text-slate-500 block mt-1">
                         {bank.channel}
                       </span>
                     </div>
@@ -2438,7 +2444,10 @@ export default function App() {
                   <div className="space-y-2.5 text-xs">
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">BCB</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="bcb" bankName="BCB" size="xs" />
+                          <strong className="text-slate-900">BCB</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">bcb.gov.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Taxa Selic Meta, PTAX diária oficial e reservas internacionais.</p>
@@ -2446,7 +2455,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">IBGE</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="ibge" bankName="IBGE" size="xs" />
+                          <strong className="text-slate-900">IBGE</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">ibge.gov.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Inflação oficial (IPCA), INPC e produção industrial.</p>
@@ -2454,7 +2466,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">Tesouro Nacional</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="tesouro" bankName="Tesouro Nacional" size="xs" />
+                          <strong className="text-slate-900">Tesouro Nacional</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">tesourodireto.com.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Dívida pública e taxas do Tesouro Direto (Selic, Prefixado, IPCA+).</p>
@@ -2462,7 +2477,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">SECEX / MDIC</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="secex" bankName="SECEX / MDIC" size="xs" />
+                          <strong className="text-slate-900">SECEX / MDIC</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">gov.br/mdic</span>
                       </div>
                       <p className="text-slate-600 mt-1">Balança comercial, exportações do agro e importações.</p>
@@ -2470,7 +2488,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">MTE</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="mte" bankName="MTE" size="xs" />
+                          <strong className="text-slate-900">MTE</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">gov.br/trabalho</span>
                       </div>
                       <p className="text-slate-600 mt-1">Salário Mínimo Nacional e emprego formal (CAGED).</p>
@@ -2488,7 +2509,10 @@ export default function App() {
                   <div className="space-y-2.5 text-xs">
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">B3 S.A.</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="b3" bankName="B3 S.A." size="xs" />
+                          <strong className="text-slate-900">B3 S.A.</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">b3.com.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Taxa DI / CDI Over, contratos futuros de dólar e mercado acionário.</p>
@@ -2496,7 +2520,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">FGV IBRE</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="fgv" bankName="FGV IBRE" size="xs" />
+                          <strong className="text-slate-900">FGV IBRE</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">ibre.fgv.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Índice IGP-M (reajuste de aluguéis) e IPC-S.</p>
@@ -2504,7 +2531,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">ANFAVEA</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="anfavea" bankName="ANFAVEA" size="xs" />
+                          <strong className="text-slate-900">ANFAVEA</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">anfavea.com.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Produção e exportação de veículos e máquinas agrícolas.</p>
@@ -2512,7 +2542,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">ANBIMA</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="anbima" bankName="ANBIMA" size="xs" />
+                          <strong className="text-slate-900">ANBIMA</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">anbima.com.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Índices de debêntures e taxas médias de CDB e renda fixa privada.</p>
@@ -2520,7 +2553,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">FENABRAVE & ABRAS</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="fenabrave" bankName="FENABRAVE & ABRAS" size="xs" />
+                          <strong className="text-slate-900">FENABRAVE & ABRAS</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">fenabrave.org.br</span>
                       </div>
                       <p className="text-slate-600 mt-1">Emplacamento de veículos e índice de consumo nos supermercados.</p>
@@ -2541,7 +2577,10 @@ export default function App() {
                   <div className="space-y-2.5 text-xs">
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">BCRA</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="bcra" bankName="BCRA" size="xs" />
+                          <strong className="text-slate-900">BCRA</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">bcra.gob.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Reservas, UVA, CER, BADLAR, ICL y relevamiento de expectativas (REM).</p>
@@ -2549,7 +2588,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">BNA</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="bna" bankName="BNA" size="xs" />
+                          <strong className="text-slate-900">BNA</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">bna.com.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Cotizaciones minoristas oficiales de billete/divisa y tasas de plazo fijo.</p>
@@ -2557,7 +2599,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">INDEC</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="indec" bankName="INDEC" size="xs" />
+                          <strong className="text-slate-900">INDEC</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">indec.gob.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">IPC nacional, Canasta Básica Total, IPIM mayorista, actividad (EMAE), desocupación y pobreza (EPH).</p>
@@ -2565,7 +2610,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">ARCA (ex AFIP)</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="arca" bankName="ARCA" size="xs" />
+                          <strong className="text-slate-900">ARCA (ex AFIP)</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">arca.gob.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Recaudación tributaria consolidada y liquidación aduanera.</p>
@@ -2573,7 +2621,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">Sec. Trabajo</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="sec_trabajo" bankName="Sec. Trabajo" size="xs" />
+                          <strong className="text-slate-900">Sec. Trabajo</strong>
+                        </div>
                         <span className="text-[11px] text-blue-700">argentina.gob.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Remuneración promedio de trabajadores estables (RIPTE).</p>
@@ -2591,7 +2642,10 @@ export default function App() {
                   <div className="space-y-2.5 text-xs">
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">CIARA-CEC</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="ciara" bankName="CIARA-CEC" size="xs" />
+                          <strong className="text-slate-900">CIARA-CEC</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">ciaracec.com.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Liquidación efectiva de divisas del complejo cerealero y oleaginoso.</p>
@@ -2599,7 +2653,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">BYMA</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="byma" bankName="BYMA" size="xs" />
+                          <strong className="text-slate-900">BYMA</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">byma.com.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Cotizaciones implícitas Dólar MEP, CCL y tasas de caución bursátil.</p>
@@ -2607,7 +2664,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">ADEFA</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="adefa" bankName="ADEFA" size="xs" />
+                          <strong className="text-slate-900">ADEFA</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">adefa.org.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Producción, ventas mayoristas y exportaciones automotrices.</p>
@@ -2615,7 +2675,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">CAME</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="came" bankName="CAME" size="xs" />
+                          <strong className="text-slate-900">CAME</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">redcame.org.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Ventas minoristas pyme en el territorio nacional.</p>
@@ -2623,7 +2686,10 @@ export default function App() {
 
                     <div className="p-2.5 rounded-xl bg-sky-50/50 border border-sky-100">
                       <div className="flex items-center justify-between">
-                        <strong className="text-slate-900">CAC</strong>
+                        <div className="flex items-center gap-2">
+                          <BankLogo bankId="cac" bankName="CAC" size="xs" />
+                          <strong className="text-slate-900">CAC</strong>
+                        </div>
                         <span className="text-[11px] text-sky-700">camarco.org.ar</span>
                       </div>
                       <p className="text-slate-600 mt-1">Costo de construcción por m² (materiales y mano de obra).</p>

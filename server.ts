@@ -263,11 +263,10 @@ async function fetchBloombergLineaRiesgo(): Promise<BloombergRiesgoInfo> {
       info.articleDate = displayDate || undefined;
     }
 
-    // Buscar menciones explícitas de cierre/nivel puntual (evitando rangos como "entre 700 y 900" o mínimos históricos)
+    // Buscar menciones explícitas de cierre diario consolidado (evitando rangos como "entre 700 y 900")
     const spotPatterns = [
-      /riesgo\s+pa[ií]s[^.]{0,120}?(?:cerr[oó]|se\s+ubic[oó]|cotiza(?:ba)?|oper[oó]|lleg[oó]|pas[oó][^.]{0,60}?a|situarse)\s+en\s+(\d{3,4})\s*(?:puntos|pb|unidades)/i,
-      /riesgo\s+pa[ií]s[^.]{0,120}?\ba\s+(\d{3,4})\s*(?:puntos|pb|unidades)\s+(?:este|hoy|el|tras)/i,
-      /embi[^.]{0,80}?(?:en|a)\s+(\d{3,4})\s*(?:puntos|pb|unidades)/i
+      /riesgo\s+pa[ií]s[^.]{0,120}?(?:cerr[oó]|se\s+ubic[oó]\s+al\s+cierre|finaliz[oó]|consolid[oó])\s+en\s+(\d{3,4})\s*(?:puntos|pb|unidades)/i,
+      /cierre[^.]{0,80}?riesgo\s+pa[ií]s[^.]{0,80}?(\d{3,4})\s*(?:puntos|pb|unidades)/i
     ];
     for (const pat of spotPatterns) {
       const m = combined.match(pat);
@@ -298,24 +297,22 @@ interface UnifiedRiesgoResult {
   history: Array<{ date: string; value: number }>;
 }
 
-let riesgoCache: { data: UnifiedRiesgoResult; timestamp: number } | null = null;
-const RIESGO_CACHE_TTL_MS = 5 * 60 * 1000;
+let riesgoCache: { data: UnifiedRiesgoResult; timestamp: number; dateKey: string } | null = null;
+const RIESGO_CACHE_TTL_MS = 4 * 60 * 60 * 1000; // Actualización consolidada de cierre diario (máx. cada 4h / cambio de jornada)
 
 async function fetchLiveRiesgoPaisData(): Promise<UnifiedRiesgoResult | null> {
   const now = Date.now();
-  if (riesgoCache && now - riesgoCache.timestamp < RIESGO_CACHE_TTL_MS) {
+  const todayKey = getArgentinaTodayDate();
+  if (riesgoCache && riesgoCache.dateKey === todayKey && now - riesgoCache.timestamp < RIESGO_CACHE_TTL_MS) {
     return riesgoCache.data;
   }
 
-  const [bloombergRes, seriesRes, spotRes] = await Promise.allSettled([
+  // Fuentes de cierre oficial diario consolidado de J.P. Morgan (una vez por jornada)
+  const [bloombergRes, seriesRes] = await Promise.allSettled([
     fetchBloombergLineaRiesgo(),
     fetch("https://api.argentinadatos.com/v1/finanzas/indices/riesgo-pais", {
       headers: { "User-Agent": "Mozilla/5.0" },
       signal: AbortSignal.timeout(7000)
-    }),
-    fetch("https://mercados.ambito.com/riesgopais/variacion", {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(6000)
     })
   ]);
 
@@ -335,38 +332,11 @@ async function fetchLiveRiesgoPaisData(): Promise<UnifiedRiesgoResult | null> {
     } catch {}
   }
 
-  let spotVal: number | null = null;
-  let spotDate: string | null = null;
-  if (spotRes.status === "fulfilled" && spotRes.value.ok) {
-    try {
-      const rawSpot = (await spotRes.value.json()) as { ultimo?: string; fecha?: string };
-      const parsedVal = rawSpot?.ultimo ? parseInt(String(rawSpot.ultimo).replace(/[^\d]/g, ""), 10) : NaN;
-      if (!isNaN(parsedVal) && parsedVal > 0) {
-        spotVal = parsedVal;
-      }
-      if (rawSpot?.fecha && /^\d{2}-\d{2}-\d{4}$/.test(rawSpot.fecha)) {
-        const [dd, mm, yyyy] = rawSpot.fecha.split("-");
-        spotDate = `${yyyy}-${mm}-${dd}`;
-      }
-    } catch {}
-  }
-
-  // Integrar punto spot más reciente en la serie diaria
-  if (spotVal && spotDate) {
-    if (history.length === 0 || history[history.length - 1].date < spotDate) {
-      history.push({ date: spotDate, value: spotVal });
-    } else if (history[history.length - 1].date === spotDate) {
-      history[history.length - 1].value = spotVal;
-    }
-  }
-
-  // Si Bloomberg Línea reporta un dato puntual con fecha igual o posterior al último cierre de la serie, incorporarlo
+  // Si Bloomberg Línea reporta un cierre diario posterior al último punto de la serie consolidada, incorporarlo
   if (bloomberg.spotValue && bloomberg.spotDate) {
     const lastSeriesDate = history.length > 0 ? history[history.length - 1].date : "";
     if (!lastSeriesDate || bloomberg.spotDate > lastSeriesDate) {
       history.push({ date: bloomberg.spotDate, value: bloomberg.spotValue });
-    } else if (bloomberg.spotDate === lastSeriesDate && !spotVal) {
-      history[history.length - 1].value = bloomberg.spotValue;
     }
   }
 
@@ -381,19 +351,19 @@ async function fetchLiveRiesgoPaisData(): Promise<UnifiedRiesgoResult | null> {
     prevValor: prev.value,
     change,
     fecha: latest.date,
-    source: "Bloomberg Línea / JP Morgan",
+    source: "Bloomberg Línea / JP Morgan (Cierre diario)",
     sourceUrl: "https://www.bloomberglinea.com/latinoamerica/argentina/",
     bloombergHeadline: bloomberg.headline,
     bloombergUrl: bloomberg.articleUrl || "https://www.bloomberglinea.com/latinoamerica/argentina/",
     history
   };
 
-  riesgoCache = { data: result, timestamp: now };
+  riesgoCache = { data: result, timestamp: now, dateKey: todayKey };
   return result;
 }
 
 /**
- * Relevamiento en tiempo real del Riesgo País (EMBI+ Argentina JP Morgan) integrado con Bloomberg Línea Argentina
+ * Relevamiento diario al cierre del Riesgo País (EMBI+ Argentina J.P. Morgan) vía Bloomberg Línea Argentina
  */
 async function syncExternalRiesgoPais() {
   try {
@@ -401,6 +371,8 @@ async function syncExternalRiesgoPais() {
     const v = variablesStore.find(x => x.id === "riesgo_pais_embi");
     if (v && live) {
       v.value = live.valor;
+      v.live = true;
+      v.fetchedAt = new Date().toISOString();
       v.lastUpdated = live.fecha;
       v.prevPublishedValue = live.prevValor;
       v.change = live.change;
@@ -412,14 +384,14 @@ async function syncExternalRiesgoPais() {
       const bloombergNote = live.bloombergHeadline
         ? ` Cobertura Bloomberg Línea: "${live.bloombergHeadline}".`
         : "";
-      v.description = `Diferencial de rendimiento entre bonos soberanos emitidos por Argentina y los títulos del Tesoro de EE.UU. (EMBI+ JP Morgan) seguido vía Bloomberg Línea Argentina (${live.valor} pb al ${live.fecha}).${bloombergNote}`;
+      v.description = `Valor oficial diario publicado una vez por jornada al cierre por J.P. Morgan (EMBI+ Argentina), seguido vía Bloomberg Línea Argentina (${live.valor} pb al cierre del ${live.fecha}).${bloombergNote}`;
       if (live.history.length > 0) {
         v.history = live.history;
       }
-      console.log(`[Auto-Sync] Riesgo País actualizado (Bloomberg Línea / EMBI+): ${live.valor} pb (${live.change >= 0 ? "+" : ""}${live.change} pb) al ${live.fecha}`);
+      console.log(`[Auto-Sync] Riesgo País (cierre diario J.P. Morgan / Bloomberg Línea): ${live.valor} pb (${live.change >= 0 ? "+" : ""}${live.change} pb) al ${live.fecha}`);
     }
   } catch (err) {
-    console.warn("[Auto-Sync] No se pudo obtener Riesgo País en línea, manteniendo referencia calibrada:", err);
+    console.warn("[Auto-Sync] No se pudo obtener cierre de Riesgo País en línea, manteniendo último cierre calibrado:", err);
   }
 }
 
@@ -945,7 +917,7 @@ async function execute0500AMDailyNewsCycle() {
   runDailyAutoSync();
 
   // Generar y calibrar noticias con datos vigentes
-  const briefingAR = getDailyNewsBriefing('AR', variablesStore.map(v => ({ id: v.id, value: v.value })));
+  const briefingAR = getDailyNewsBriefing('AR', variablesStore.map(v => ({ id: v.id, value: v.value, change: v.change, changePercent: v.changePercent, history: v.history })));
   const reportAR = runTripleCheckValidation(briefingAR);
 
   const briefingBR = getDailyNewsBriefing('BR');
@@ -1175,7 +1147,7 @@ async function startServer() {
     }
 
     if (!currentValidatedNewsAR) {
-      const briefing = getDailyNewsBriefing('AR', variablesStore.map(v => ({ id: v.id, value: v.value })));
+      const briefing = getDailyNewsBriefing('AR', variablesStore.map(v => ({ id: v.id, value: v.value, change: v.change, changePercent: v.changePercent, history: v.history })));
       const report = runTripleCheckValidation(briefing);
       currentValidatedNewsAR = { briefing, report };
     }

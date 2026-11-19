@@ -81,6 +81,32 @@ export function syncVariablesToCurrentDate(variables: EconomicVariable[], target
         ? [...variable.history]
         : [];
 
+      // El Riesgo País (EMBI+ J.P. Morgan) actualiza una sola vez al día con el cierre consolidado de la jornada:
+      // nunca interpolar días faltantes ni sobreescribir su fecha real de cierre, para conservar la variación exacta vs. cierre previo.
+      const isConsolidatedDailyClose = variable.id === 'riesgo_pais_embi';
+
+      if (isConsolidatedDailyClose) {
+        if (historyCopy.length === 0) {
+          historyCopy.push({ date: lastUpdated, value: currentValue });
+        }
+        const trimmedHistory = historyCopy.slice(-1200);
+        const prevValue = trimmedHistory.length >= 2
+          ? trimmedHistory[trimmedHistory.length - 2].value
+          : (variable.prevPublishedValue ?? currentValue);
+        const change = Number((currentValue - prevValue).toFixed(2));
+        return {
+          ...variable,
+          value: currentValue,
+          change,
+          changePercent: change,
+          changeUnit: 'pb' as const,
+          comparisonLabel: 'vs. cierre anterior JP Morgan',
+          prevPublishedValue: prevValue,
+          lastUpdated,
+          history: trimmedHistory
+        };
+      }
+
       if (historyCopy.length > 0) {
         const lastIdx = historyCopy.length - 1;
         const lastPoint = historyCopy[lastIdx];

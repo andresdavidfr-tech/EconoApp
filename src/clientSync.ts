@@ -118,16 +118,18 @@ export async function fetchUniversalVariables(country: 'AR' | 'BR'): Promise<Eco
             const prev = typeof riesgo.prevValor === 'number' ? Math.round(riesgo.prevValor) : (v.prevPublishedValue || 852);
             const delta = typeof riesgo.change === 'number' ? Math.round(riesgo.change) : (curVal - prev);
             v.value = curVal;
+            v.live = true;
+            v.fetchedAt = new Date().toISOString();
             v.lastUpdated = riesgo.fecha || todayStr;
             v.prevPublishedValue = prev;
             v.change = delta;
             v.changePercent = delta;
             v.changeUnit = 'pb';
-            v.source = riesgo.source || 'Bloomberg Línea / JP Morgan';
+            v.source = riesgo.source || 'Bloomberg Línea / JP Morgan (Cierre diario)';
             v.sourceUrl = riesgo.sourceUrl || 'https://www.bloomberglinea.com/latinoamerica/argentina/';
             v.comparisonLabel = 'vs. cierre anterior JP Morgan';
             const bloombergNote = riesgo.bloombergHeadline ? ` Cobertura Bloomberg Línea: "${riesgo.bloombergHeadline}".` : '';
-            v.description = `Diferencial de rendimiento entre bonos soberanos emitidos por Argentina y los títulos del Tesoro de EE.UU. (EMBI+ JP Morgan) seguido vía Bloomberg Línea Argentina (${curVal} pb al ${v.lastUpdated}).${bloombergNote}`;
+            v.description = `Valor oficial diario publicado una vez por jornada al cierre por J.P. Morgan (EMBI+ Argentina), seguido vía Bloomberg Línea Argentina (${curVal} pb al cierre del ${v.lastUpdated}).${bloombergNote}`;
             if (Array.isArray(v.history) && v.history.length > 0) {
               const lastPt = v.history[v.history.length - 1];
               if (lastPt.date === v.lastUpdated) {

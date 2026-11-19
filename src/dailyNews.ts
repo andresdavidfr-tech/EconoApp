@@ -208,10 +208,11 @@ export function getDailyNewsBriefing(
   const tnaPf = pfVar?.value ?? 19.25;
   const tnaBadlar = badlarVar?.value ?? 22.60;
   const reservasVal = reservasVar?.value ?? 50603;
-  const adefaVal = adefaVar?.value ?? 49.4;
-  const cameVal = cameVar?.value ?? 2.9;
+  const adefaRaw = adefaVar?.value ?? 40426;
+  const adefaUnits = adefaRaw > 0 && adefaRaw < 500 ? Math.round(adefaRaw * 1000) : Math.round(adefaRaw);
+  const cameVal = cameVar?.value ?? -1.6;
   const ciaraVal = ciaraVar?.value ?? 625;
-  const ripteVal = ripteVar?.value ?? 1045280;
+  const ripteVal = ripteVar?.value ?? 2022244.09;
   const desempleoVal = desempleoVar?.value ?? 7.9;
   const pobrezaVal = pobrezaVar?.value ?? 32.3;
 
@@ -223,6 +224,9 @@ export function getDailyNewsBriefing(
   const brechaCcl = Number((((cclVal - mayoristaVal) / mayoristaVal) * 100).toFixed(1));
   const costoCanjeCable = Number((((cclVal - mepVal) / mepVal) * 100).toFixed(2));
 
+  const fmtPct = (v: number, decimals = 1, signed = false) =>
+    `${signed && v > 0 ? '+' : ''}${v.toFixed(decimals).replace('.', ',')}%`;
+
   const blueStr = `$${blueVal.toLocaleString('es-AR')}`;
   const mepStr = `$${mepVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const cclStr = `$${cclVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -232,7 +236,7 @@ export function getDailyNewsBriefing(
   // CÁLCULO DE INSIGHT 2: Riesgo País, Tendencia Histórica y Sobrecosto
   // --------------------------------------------------------------------------
   const riesgoChange = riesgoVar?.change ?? -23;
-  const sobrecostoAnual = (riesgoVal / 100).toFixed(2);
+  const sobrecostoAnual = (riesgoVal / 100).toFixed(2).replace('.', ',');
   let minRiesgo = riesgoVal;
   let maxRiesgo = riesgoVal;
   if (riesgoVar?.history && riesgoVar.history.length > 0) {
@@ -249,13 +253,23 @@ export function getDailyNewsBriefing(
   const temBadlar = Number(((tnaBadlar * 30) / 365).toFixed(2));
 
   // --------------------------------------------------------------------------
-  // CÁLCULO DE INSIGHT 4: Dinámica de Reservas del BCRA (API Oficial)
+  // CÁLCULO DE INSIGHT 4: Dinámica de Reservas del BCRA
   // --------------------------------------------------------------------------
   const reservasStr = `US$ ${reservasVal.toLocaleString('es-AR')} M`;
   const reservasChange = reservasVar?.change ?? 24;
+  const reservasDeltaStr = `${reservasChange > 0 ? '+' : reservasChange < 0 ? '-' : ''}US$ ${Math.abs(reservasChange)}`;
 
   // --------------------------------------------------------------------------
-  // CONSTRUCCIÓN DE LAS 5 CLAVES CON INSIGHTS REALES BASADOS EN DATOS
+  // CÁLCULO DE INSIGHT 5: Economía Real, Empleo y Salarios
+  // --------------------------------------------------------------------------
+  const desempleoStr = fmtPct(desempleoVal, 1);
+  const pobrezaStr = fmtPct(pobrezaVal, 1);
+  const adefaStr = adefaUnits.toLocaleString('es-AR');
+  const cameStr = fmtPct(cameVal, 1, true);
+  const ripteStr = `$${ripteVal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  // --------------------------------------------------------------------------
+  // CONSTRUCCIÓN DE LAS 5 CLAVES CON INSIGHTS BASADOS EN DATOS
   // --------------------------------------------------------------------------
   const items: DailyNewsItem[] = [
     {
@@ -263,10 +277,10 @@ export function getDailyNewsBriefing(
       order: 1,
       badge: 'Mercado Cambiario & Brechas',
       emoji: '💵',
-      title: `Brecha Blue-Oficial en ${brechaBlue > 0 ? '+' : ''}${brechaBlue}% y costo de canje bursátil (CCL vs MEP) en ${costoCanjeCable}%`,
-      highlightNumber: `${brechaBlue > 0 ? '+' : ''}${brechaBlue}%`,
+      title: `Brecha Blue-Oficial en ${fmtPct(brechaBlue, 1, true)} y costo de canje bursátil (CCL vs MEP) en ${fmtPct(costoCanjeCable, 2)}`,
+      highlightNumber: fmtPct(brechaBlue, 1, true),
       highlightLabel: `Brecha Blue (${blueStr}) vs Oficial BNA (${bnaStr})`,
-      summary: `Procesando los datos de cotizaciones del catálogo: el Dólar Blue cotiza a ${blueStr} frente al Oficial BNA de ${bnaStr}, consolidando una brecha acotada del ${brechaBlue}%. En el plano bursátil de BYMA, el Dólar MEP opera en ${mepStr} (brecha del ${brechaMep}%) y el CCL en ${cclStr} (brecha del ${brechaCcl}%), registrando un costo de canje para transferencias al exterior del ${costoCanjeCable}%. Variación de 24h: Blue ${blueVar?.changePercent ? `${blueVar.changePercent > 0 ? '+' : ''}${blueVar.changePercent}%` : 'estable'}.`,
+      summary: `El Dólar Blue cotiza a ${blueStr} frente al Oficial BNA de ${bnaStr}, consolidando una brecha del ${fmtPct(brechaBlue, 1)}. En el plano bursátil de BYMA, el Dólar MEP opera en ${mepStr} (brecha del ${fmtPct(brechaMep, 1)}) y el CCL en ${cclStr} (brecha del ${fmtPct(brechaCcl, 1)}), con un costo de canje para transferencias al exterior del ${fmtPct(costoCanjeCable, 2)}. Variación de 24h: Blue ${blueVar?.changePercent ? fmtPct(blueVar.changePercent, 2, true) : 'estable'}.`,
       whyItMatters: 'Una brecha cambiaria contenida en un dígito elimina los incentivos al arbitraje informal y desacelera la remarcación preventiva de precios en la cadena comercial.',
       source: 'Ámbito / BYMA / Banco Nación',
       tag: 'argentina'
@@ -276,12 +290,12 @@ export function getDailyNewsBriefing(
       order: 2,
       badge: 'Riesgo Soberano & Bonos',
       emoji: '📉',
-      title: `Riesgo País en ${riesgoVal} pb: sobrecosto financiero del ${sobrecostoAnual}% y rango trimestral`,
+      title: `Riesgo País en ${riesgoVal} pb: sobrecosto financiero del ${sobrecostoAnual}% anual`,
       highlightNumber: `${riesgoVal} pb`,
-      highlightLabel: `EMBI+ JP Morgan (${riesgoChange > 0 ? '+' : ''}${riesgoChange} pb en la rueda)`,
-      summary: `A partir de la serie telemétrica del riesgo país en la app: el indicador se sitúa en ${riesgoVal} pb, tras registrar una variación de ${riesgoChange > 0 ? '+' : ''}${riesgoChange} pb. En la serie histórica del período, el indicador ha oscilado entre un mínimo de ${minRiesgo} pb y un máximo de ${maxRiesgo} pb. El nivel actual equivale a un sobrecosto de endeudamiento del ${sobrecostoAnual}% anual sobre la tasa libre de riesgo de los Bonos del Tesoro de EE.UU.`,
+      highlightLabel: `Cierre diario EMBI+ JP Morgan (${riesgoChange > 0 ? '+' : ''}${riesgoChange} pb vs. cierre previo)`,
+      summary: `El riesgo país se sitúa en ${riesgoVal} pb al cierre oficial diario publicado por J.P. Morgan, tras registrar una variación de ${riesgoChange > 0 ? '+' : ''}${riesgoChange} pb frente al cierre previo. En la serie reciente, el indicador osciló entre un mínimo de ${minRiesgo} pb y un máximo de ${maxRiesgo} pb, lo que equivale a un sobrecosto de endeudamiento del ${sobrecostoAnual}% anual sobre la tasa libre de riesgo de los Bonos del Tesoro de EE.UU.`,
       whyItMatters: 'La compresión del spread soberano mejora directamente la valuación de los activos argentinos y abarata las futuras emisiones de deuda para inversión privada.',
-      source: 'Bloomberg Línea / JP Morgan / Serie de la App',
+      source: 'Bloomberg Línea / JP Morgan',
       tag: 'argentina'
     },
     {
@@ -289,10 +303,10 @@ export function getDailyNewsBriefing(
       order: 3,
       badge: 'Ecuación del Ahorro & Rendimiento Real',
       emoji: '📊',
-      title: `Plazo Fijo BNA rinde ${temPf}% TEM frente al ${ipcVal}% de IPC mensual (Diferencial real: ${rendimientoRealMensual > 0 ? '+' : ''}${rendimientoRealMensual}%)`,
-      highlightNumber: `${temPf}% TEM`,
-      highlightLabel: `TEM a 30 días (${tnaPf}% TNA) vs IPC ${ipcVal}% mensual`,
-      summary: `Cruzando las métricas de tasas e inflación de la plataforma: con una TNA del ${tnaPf}% en el plazo fijo tradicional minorista del BNA, la Tasa Efectiva Mensual (TEM) a 30 días se ubica en ${temPf}%. Frente a la inflación mensual del ${ipcVal}% informada por el INDEC, el rendimiento real arroja un margen de ${rendimientoRealMensual > 0 ? '+' : ''}${rendimientoRealMensual}% mensual. En el segmento mayorista, la tasa BADLAR de bancos privados (${tnaBadlar}% TNA) equivale a una TEM del ${temBadlar}%.`,
+      title: `Plazo Fijo BNA rinde ${fmtPct(temPf, 2)} TEM frente al ${fmtPct(ipcVal, 2)} de IPC mensual (Diferencial: ${fmtPct(rendimientoRealMensual, 2, true)})`,
+      highlightNumber: `${fmtPct(temPf, 2)} TEM`,
+      highlightLabel: `TEM a 30 días (${fmtPct(tnaPf, 2)} TNA) vs IPC ${fmtPct(ipcVal, 2)} mensual`,
+      summary: `Con una TNA del ${fmtPct(tnaPf, 2)} en el plazo fijo tradicional minorista del BNA, la Tasa Efectiva Mensual (TEM) a 30 días se ubica en ${fmtPct(temPf, 2)}. Frente a la inflación mensual del ${fmtPct(ipcVal, 2)} informada por el INDEC, el rendimiento real arroja un diferencial de ${fmtPct(rendimientoRealMensual, 2, true)} mensual. En el segmento mayorista, la tasa BADLAR de bancos privados (${fmtPct(tnaBadlar, 2)} TNA) equivale a una TEM del ${fmtPct(temBadlar, 2)}.`,
       whyItMatters: 'Un diferencial real cercano a la paridad con el IPC preserva el capital de los ahorristas bancarios sin generar desintermediación financiera.',
       source: 'INDEC / BCRA / Banco Nación',
       tag: 'argentina'
@@ -302,12 +316,12 @@ export function getDailyNewsBriefing(
       order: 4,
       badge: 'Reservas del BCRA & Respaldo',
       emoji: '🏛️',
-      title: `Reservas Internacionales del BCRA en ${reservasStr} con saldo diario de ${reservasChange > 0 ? '+' : ''}US$ ${reservasChange} M`,
+      title: `Reservas Internacionales del BCRA en ${reservasStr} con saldo diario de ${reservasDeltaStr} M`,
       highlightNumber: reservasStr,
-      highlightLabel: `Stock Oficial en bcra.gob.ar (${reservasChange > 0 ? '+' : ''}US$ ${reservasChange} M)`,
-      summary: `Según los datos oficiales de la API del BCRA (https://www.bcra.gob.ar/apis-banco-central/) integrados en la app, las Reservas Internacionales del BCRA alcanzan ${reservasStr}, con una variación de ${reservasChange > 0 ? '+' : ''}US$ ${reservasChange} millones en la jornada. El flujo de ingresos se complementa con la liquidación agroindustrial de CIARA-CEC, que aportó US$ ${ciaraVal} millones en el mercado de cambios, apuntalando la cobertura monetaria.`,
+      highlightLabel: `Stock Oficial BCRA (${reservasDeltaStr} M)`,
+      summary: `Las Reservas Internacionales brutas del BCRA alcanzan ${reservasStr}, con una variación de ${reservasDeltaStr} millones en la jornada. El flujo de ingresos se complementa con la liquidación agroindustrial de CIARA-CEC, que aportó US$ ${ciaraVal} millones en el mercado de cambios, apuntalando la cobertura monetaria.`,
       whyItMatters: 'El nivel de reservas líquidas publicado por la autoridad monetaria determina la capacidad de absorción ante fluctuaciones externas y asegura el cumplimiento de compromisos financieros.',
-      source: 'Banco Central (API oficial bcra.gob.ar) / CIARA-CEC',
+      source: 'BCRA / CIARA-CEC',
       tag: 'argentina'
     },
     {
@@ -315,10 +329,10 @@ export function getDailyNewsBriefing(
       order: 5,
       badge: 'Economía Real, Empleo & Social',
       emoji: '🏭',
-      title: `Desocupación en ${desempleoVal.toFixed(1)}% y pobreza en ${pobrezaVal.toFixed(1)}% (INDEC), con industria en ${adefaVal}k vehículos`,
-      highlightNumber: `${desempleoVal.toFixed(1)}% / ${pobrezaVal.toFixed(1)}%`,
-      highlightLabel: `Desocupación 2T (${desempleoVal.toFixed(1)}%) y Pobreza 1S (${pobrezaVal.toFixed(1)}%) INDEC`,
-      summary: `Sintetizando las variables laborales, sociales y productivas del tablero: la EPH del INDEC marca una tasa de desocupación del ${desempleoVal.toFixed(1)}% (2.º trimestre de 2026) y una incidencia de la pobreza del ${pobrezaVal.toFixed(1)}% en personas (1.º semestre de 2026). En la economía real, la industria automotriz ensambló ${adefaVal} mil vehículos (ADEFA), las ventas minoristas pyme (CAME) variaron ${cameVal > 0 ? '+' : ''}${cameVal}% interanual y el salario formal promedio (RIPTE) se ubica en $${ripteVal.toLocaleString('es-AR')}.`,
+      title: `Desocupación en ${desempleoStr} y pobreza en ${pobrezaStr} (INDEC), con industria en ${adefaStr} vehículos`,
+      highlightNumber: `${desempleoStr} / ${pobrezaStr}`,
+      highlightLabel: `Desocupación 2T (${desempleoStr}) y Pobreza 1S (${pobrezaStr}) INDEC`,
+      summary: `La EPH del INDEC marca una tasa de desocupación del ${desempleoStr} (2.º trimestre de 2026) y una incidencia de la pobreza del ${pobrezaStr} en personas (1.º semestre de 2026). En la economía real, las terminales automotrices produjeron ${adefaStr} vehículos en el mes (ADEFA), las ventas minoristas pyme (CAME) variaron ${cameStr} interanual real y el salario formal promedio (RIPTE) se ubica en ${ripteStr}.`,
       whyItMatters: 'Cruzar el pulso fabril y comercial con las tasas de desempleo y pobreza del INDEC permite evaluar si la reactivación sectorial se traduce en empleo formal e ingresos reales.',
       source: 'INDEC (EPH) / ADEFA / CAME / Sec. Trabajo',
       tag: 'argentina'
@@ -328,7 +342,7 @@ export function getDailyNewsBriefing(
   return {
     country: 'AR',
     title: '5 Claves Económicas del Día (Insights de Datos)',
-    subtitle: `Brecha Blue (${brechaBlue > 0 ? '+' : ''}${brechaBlue}%) · Riesgo (${riesgoVal} pb) · Plazo Fijo vs IPC (TEM ${temPf}% vs ${ipcVal}%) · Reservas (${reservasStr}) · Industria (${adefaVal}k)`,
+    subtitle: `Brecha Blue (${fmtPct(brechaBlue, 1, true)}) · Riesgo (${riesgoVal} pb) · Plazo Fijo vs IPC (TEM ${fmtPct(temPf, 2)} vs ${fmtPct(ipcVal, 2)}) · Reservas (${reservasStr}) · Industria (${adefaStr} unid.)`,
     readingTimeMinutes: 2,
     editionTime: formatToDayMonthYear(todayStr),
     lastUpdatedDate: todayStr,
